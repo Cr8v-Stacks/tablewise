@@ -771,8 +771,8 @@ function wptw_frontend_scripts() {
  * @return int|false      The offset of the closing </p> tag, or false.
  */
 function wptw_find_root_paragraph( string $content, array $levels ): int|false {
-    // Regex identifies block-level boundaries.
-    $pattern = '/(<div[\s>]|<\/div>|<p[\s>]|<\/p>|<h[2-6][\s>])/i';
+    // Capture full tags for div, section, article, p, and headings.
+    $pattern = '/(<\/?(?:div|section|article|p|h[2-6])\b[^>]*>)/i';
     $tokens  = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_OFFSET_CAPTURE );
 
     $depth = 0;
@@ -780,20 +780,24 @@ function wptw_find_root_paragraph( string $content, array $levels ): int|false {
         $tag    = $token[0];
         $offset = $token[1];
 
-        if ( stripos( $tag, '<div' ) === 0 ) {
+        if ( strpos( $tag, '<' ) !== 0 ) continue;
+
+        if ( preg_match( '/^<(div|section|article)\b/i', $tag ) ) {
             $depth++;
-        } elseif ( stripos( $tag, '</div' ) === 0 ) {
+            error_log("WPTW: Start Tag $tag, New Depth: $depth");
+        } elseif ( preg_match( '/^<\/(div|section|article)\b/i', $tag ) ) {
             $depth = max( 0, $depth - 1 );
-        } elseif ( strcasecmp( $tag, '</p>' ) === 0 ) {
-            // Found a closing paragraph tag.
-            // If we are at depth 0, this is the "true" first paragraph.
+            error_log("WPTW: End Tag $tag, New Depth: $depth");
+        } elseif ( preg_match( '/^<\/p\b/i', $tag ) ) {
+            error_log("WPTW: Found </p> at depth $depth, offset $offset");
             if ( $depth === 0 ) {
+                error_log("WPTW: Selected offset $offset");
                 return $offset;
             }
-        } elseif ( preg_match( '/^<h[2-6]/i', $tag ) ) {
-            // If we hit a root-level heading before any root paragraph,
-            // return false to let the "Before first heading" fallback take over.
+        } elseif ( preg_match( '/^<h[2-6]\b/i', $tag ) ) {
+            error_log("WPTW: Found heading $tag at depth $depth");
             if ( $depth === 0 ) {
+                error_log("WPTW: Hit root heading. Aborting P search.");
                 return false;
             }
         }
