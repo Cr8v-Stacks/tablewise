@@ -30,8 +30,10 @@ function wptw_inject_toc( string $content ): string {
     if ( $position === 'shortcode_only' ) return $content;
 
     if ( $position === 'after_first_paragraph' ) {
-        $p = strpos( $content, '</p>' );
-        if ( $p !== false ) return substr_replace( $content, '</p>' . $toc, $p, 4 );
+        $p = wptw_find_root_paragraph( $content, (array) wptw_get( 'heading_levels' ) );
+        if ( $p !== false ) {
+            return substr_replace( $content, '</p>' . $toc, $p, 4 );
+        }
     }
 
     $levels = (array) wptw_get( 'heading_levels' );
@@ -759,3 +761,44 @@ function wptw_frontend_scripts() {
     </script>
     <?php
 }
+
+/**
+ * Smart scanner to find the first paragraph at the root level (depth 0).
+ * Skips paragraphs nested inside <div> wrappers (decorative blocks).
+ *
+ * @param string $content HTML content.
+ * @param array  $levels  Participating heading levels (h2-h6).
+ * @return int|false      The offset of the closing </p> tag, or false.
+ */
+function wptw_find_root_paragraph( string $content, array $levels ): int|false {
+    // Regex identifies block-level boundaries.
+    $pattern = '/(<div[\s>]|<\/div>|<p[\s>]|<\/p>|<h[2-6][\s>])/i';
+    $tokens  = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_OFFSET_CAPTURE );
+
+    $depth = 0;
+    foreach ( $tokens as $token ) {
+        $tag    = $token[0];
+        $offset = $token[1];
+
+        if ( stripos( $tag, '<div' ) === 0 ) {
+            $depth++;
+        } elseif ( stripos( $tag, '</div' ) === 0 ) {
+            $depth = max( 0, $depth - 1 );
+        } elseif ( strcasecmp( $tag, '</p>' ) === 0 ) {
+            // Found a closing paragraph tag.
+            // If we are at depth 0, this is the "true" first paragraph.
+            if ( $depth === 0 ) {
+                return $offset;
+            }
+        } elseif ( preg_match( '/^<h[2-6]/i', $tag ) ) {
+            // If we hit a root-level heading before any root paragraph,
+            // return false to let the "Before first heading" fallback take over.
+            if ( $depth === 0 ) {
+                return false;
+            }
+        }
+    }
+
+    return false;
+}
+
