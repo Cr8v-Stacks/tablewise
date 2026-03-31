@@ -2,7 +2,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /* ─── Content filter ──────────────────────────────────────── */
-add_filter( 'the_content', 'wptw_inject_toc', 20 );
+add_filter( 'the_content', 'wptw_inject_toc', 999 );
 
 function wptw_inject_toc( string $content ): string {
     if ( ! is_singular() ) return $content;
@@ -764,15 +764,21 @@ function wptw_frontend_scripts() {
 
 /**
  * Smart scanner to find the first paragraph at the root level (depth 0).
- * Skips paragraphs nested inside <div> wrappers (decorative blocks).
+ *
+ * Tracks depth across ALL HTML5 block-level container elements so that
+ * paragraphs injected by any third-party plugin wrapper are skipped,
+ * regardless of which element name that plugin uses.
  *
  * @param string $content HTML content.
  * @param array  $levels  Participating heading levels (h2-h6).
  * @return int|false      The offset of the closing </p> tag, or false.
  */
 function wptw_find_root_paragraph( string $content, array $levels ): int|false {
-    // Capture full tags for div, section, article, p, and headings.
-    $pattern = '/(<\/?(?:div|section|article|p|h[2-6])\b[^>]*>)/i';
+    // All HTML5 block containers that can wrap <p> tags.
+    // Void/inline elements intentionally excluded — they cannot nest <p>.
+    $containers = 'div|section|article|aside|main|nav|header|footer|figure|figcaption|blockquote|details|summary|fieldset|form|dialog';
+
+    $pattern = '/(<\/?(?:' . $containers . '|p|h[2-6])\b[^>]*>)/i';
     $tokens  = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_OFFSET_CAPTURE );
 
     $depth = 0;
@@ -780,26 +786,16 @@ function wptw_find_root_paragraph( string $content, array $levels ): int|false {
         $tag    = $token[0];
         $offset = $token[1];
 
-        if ( strpos( $tag, '<' ) !== 0 ) continue;
+        if ( ! isset( $tag[0] ) || $tag[0] !== '<' ) continue;
 
-        if ( preg_match( '/^<(div|section|article)\b/i', $tag ) ) {
+        if ( preg_match( '/^<(' . $containers . ')\b/i', $tag ) ) {
             $depth++;
-            error_log("WPTW: Start Tag $tag, New Depth: $depth");
-        } elseif ( preg_match( '/^<\/(div|section|article)\b/i', $tag ) ) {
+        } elseif ( preg_match( '/^<\/(' . $containers . ')\b/i', $tag ) ) {
             $depth = max( 0, $depth - 1 );
-            error_log("WPTW: End Tag $tag, New Depth: $depth");
-        } elseif ( preg_match( '/^<\/p\b/i', $tag ) ) {
-            error_log("WPTW: Found </p> at depth $depth, offset $offset");
-            if ( $depth === 0 ) {
-                error_log("WPTW: Selected offset $offset");
-                return $offset;
-            }
-        } elseif ( preg_match( '/^<h[2-6]\b/i', $tag ) ) {
-            error_log("WPTW: Found heading $tag at depth $depth");
-            if ( $depth === 0 ) {
-                error_log("WPTW: Hit root heading. Aborting P search.");
-                return false;
-            }
+        } elseif ( $depth === 0 && preg_match( '/^<\/p\b/i', $tag ) ) {
+            return $offset;
+        } elseif ( $depth === 0 && preg_match( '/^<h[2-6]\b/i', $tag ) ) {
+            return false;
         }
     }
 
