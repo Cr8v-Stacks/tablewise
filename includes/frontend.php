@@ -464,7 +464,7 @@ function wptw_frontend_styles() {
         .wptw-btt                           { bottom:16px; right:16px; width:38px; height:38px; font-size:15px; }
     }
 
-    <?php if ( ! empty( $o['custom_css'] ) ) echo wp_strip_all_tags( $o['custom_css'] ); ?>
+    <?php if ( ! empty( $o['custom_css'] ) ) echo wp_strip_all_tags( $o['custom_css'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
     </style>
     <?php
 }

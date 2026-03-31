@@ -647,7 +647,7 @@ function wptw_admin_js() {
         <?php 
         // Security: Nonce verification is handled by options.php before redirection.
         // We only show a UI flash if the settings-updated flag is present.
-        if ( ! empty( $_GET['settings-updated'] ) ) : ?>
+        if ( ! empty( $_GET['settings-updated'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
         var sv = document.getElementById('wptw-saved');
         if(sv){ sv.classList.add('on'); setTimeout(function(){ sv.classList.remove('on'); }, 3000); }
         <?php endif; ?>

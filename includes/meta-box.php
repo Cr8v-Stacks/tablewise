@@ -142,11 +142,11 @@ function wptw_render_meta_box( WP_Post $post ) {
 /* ─── Save meta box ───────────────────────────────────────── */
 add_action( 'save_post', function ( $post_id ) {
     if ( ! isset( $_POST['wptw_meta_nonce'] ) ) return;
-    if ( ! wp_verify_nonce( wp_unslash( $_POST['wptw_meta_nonce'] ), 'wptw_meta_save' ) ) return;
+    if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wptw_meta_nonce'] ) ), 'wptw_meta_save' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
-    $raw  = isset( $_POST['wptw_meta'] ) ? wp_unslash( $_POST['wptw_meta'] ) : [];
+    $raw = isset( $_POST['wptw_meta'] ) ? map_deep( wp_unslash( $_POST['wptw_meta'] ), 'sanitize_text_field' ) : [];
     $clean = [];
 
     $clean['disable']       = ! empty( $raw['disable'] ) ? 1 : 0;
