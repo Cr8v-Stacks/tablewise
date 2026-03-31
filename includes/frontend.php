@@ -37,9 +37,9 @@ function wptw_inject_toc( string $content ): string {
     }
 
     $levels = (array) wptw_get( 'heading_levels' );
-    $nums   = implode( '', array_map( fn($h) => substr($h,1), $levels ) );
-    if ( preg_match( '/<h[' . $nums . '][\s>]/i', $content, $m, PREG_OFFSET_CAPTURE ) ) {
-        return substr_replace( $content, $toc, $m[0][1], 0 );
+    $h = wptw_find_root_heading( $content, $levels );
+    if ( $h !== false ) {
+        return substr_replace( $content, $toc, $h, 0 );
     }
 
     return $toc . $content;
@@ -796,6 +796,44 @@ function wptw_find_root_paragraph( string $content, array $levels ): int|false {
             return $offset;
         } elseif ( $depth === 0 && preg_match( '/^<h[2-6]\b/i', $tag ) ) {
             return false;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Depth-aware scanner to find the first heading at the root level (depth 0).
+ *
+ * Uses the same container set as wptw_find_root_paragraph() so that headings
+ * injected inside any third-party plugin wrapper are skipped.
+ *
+ * @param string $content HTML content.
+ * @param array  $levels  Participating heading levels (e.g. ['h2','h3']).
+ * @return int|false      The offset of the opening <hN> tag, or false.
+ */
+function wptw_find_root_heading( string $content, array $levels ): int|false {
+    $nums = implode( '', array_map( fn( $h ) => substr( $h, 1 ), $levels ) );
+    if ( $nums === '' ) return false;
+
+    $containers = 'div|section|article|aside|main|nav|header|footer|figure|figcaption|blockquote|details|summary|fieldset|form|dialog';
+
+    $pattern = '/(<\/?(?:' . $containers . '|h[' . $nums . '])\b[^>]*>)/i';
+    $tokens  = preg_split( $pattern, $content, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_OFFSET_CAPTURE );
+
+    $depth = 0;
+    foreach ( $tokens as $token ) {
+        $tag    = $token[0];
+        $offset = $token[1];
+
+        if ( ! isset( $tag[0] ) || $tag[0] !== '<' ) continue;
+
+        if ( preg_match( '/^<(' . $containers . ')\b/i', $tag ) ) {
+            $depth++;
+        } elseif ( preg_match( '/^<\/(' . $containers . ')\b/i', $tag ) ) {
+            $depth = max( 0, $depth - 1 );
+        } elseif ( $depth === 0 && preg_match( '/^<h[' . $nums . ']\b/i', $tag ) ) {
+            return $offset;
         }
     }
 
