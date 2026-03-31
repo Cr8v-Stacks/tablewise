@@ -6,7 +6,7 @@ add_action( 'admin_init', function () {
 } );
 
 add_action( 'admin_menu', function () {
-    add_options_page( 'WP TableWise', 'WP TableWise', 'manage_options', 'wp-tablewise', 'wptw_render_settings_page' );
+    add_options_page( 'TableWise', 'TableWise', 'manage_options', 'tablewise', 'wptw_render_settings_page' );
 } );
 
 /**
@@ -14,7 +14,7 @@ add_action( 'admin_menu', function () {
  * We use native <input type="color"> instead. Zero JS dependencies for admin.
  */
 add_action( 'admin_enqueue_scripts', function ( $hook ) {
-    if ( $hook !== 'settings_page_wp-tablewise' ) return;
+    if ( $hook !== 'settings_page_tablewise' ) return;
     add_action( 'admin_footer', 'wptw_admin_js', 20 );
 } );
 
@@ -93,7 +93,7 @@ function wptw_render_settings_page() {
         <header class="wptw-ph">
             <div class="wptw-logo">
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="6" fill="#111"/><path d="M7 9h6M7 14h12M7 19h9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
-                <div><span class="wptw-pname">WP TableWise</span><span class="wptw-pver">v<?php echo esc_html(WPTW_VERSION); ?></span></div>
+                <div><span class="wptw-pname">TableWise</span><span class="wptw-pver">v<?php echo esc_html( WPTW_VERSION ); ?></span></div>
             </div>
             <a href="https://cr8vstacks.com" target="_blank" class="wptw-by">by Cr8v Stacks ↗</a>
         </header>
@@ -101,8 +101,8 @@ function wptw_render_settings_page() {
         <div class="wptw-layout">
             <nav class="wptw-tabs" role="tablist">
                 <?php foreach ( $tabs as $tid => $t ) : ?>
-                <button type="button" class="wptw-tab" role="tab" data-tab="<?php echo $tid; ?>" aria-selected="false">
-                    <?php echo $t['svg']; ?><span><?php echo esc_html($t['label']); ?></span>
+                <button type="button" class="wptw-tab" role="tab" data-tab="<?php echo esc_attr( $tid ); ?>" aria-selected="false">
+                    <?php echo $t['svg']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><span><?php echo esc_html( $t['label'] ); ?></span>
                 </button>
                 <?php endforeach; ?>
             </nav>
@@ -118,24 +118,24 @@ function wptw_render_settings_page() {
                             <label class="wptw-label">Post types</label>
                             <div class="wptw-checkgroup">
                                 <?php foreach($pts as $slug=>$lbl): ?>
-                                <label class="wptw-check"><input type="checkbox" name="<?php echo WPTW_OPTION;?>[post_types][]" value="<?php echo esc_attr($slug);?>" <?php checked(in_array($slug,(array)$o['post_types'],true));?>><span><?php echo esc_html($lbl);?></span></label>
+                                <label class="wptw-check"><input type="checkbox" name="<?php echo esc_attr( WPTW_OPTION ); ?>[post_types][]" value="<?php echo esc_attr($slug);?>" <?php checked(in_array($slug,(array)$o['post_types'],true));?>><span><?php echo esc_html($lbl);?></span></label>
                                 <?php endforeach; ?>
                             </div>
                         </div>
                         <div class="wptw-field">
                             <label class="wptw-label">Minimum H2 headings to show TOC</label>
-                            <input type="number" name="<?php echo WPTW_OPTION;?>[min_headings]" value="<?php echo esc_attr($o['min_headings']);?>" min="1" max="20" class="wptw-num">
+                            <input type="number" name="<?php echo esc_attr( WPTW_OPTION ); ?>[min_headings]" value="<?php echo esc_attr($o['min_headings']);?>" min="1" max="20" class="wptw-num">
                         </div>
                         <div class="wptw-field">
                             <label class="wptw-label">Exclude post IDs</label>
-                            <input type="text" name="<?php echo WPTW_OPTION;?>[exclude_ids]" value="<?php echo esc_attr($o['exclude_ids']);?>" class="wptw-input" placeholder="42, 107, 300">
+                            <input type="text" name="<?php echo esc_attr( WPTW_OPTION ); ?>[exclude_ids]" value="<?php echo esc_attr($o['exclude_ids']);?>" class="wptw-input" placeholder="42, 107, 300">
                             <p class="wptw-help">Comma-separated. TOC suppressed on these posts regardless of other settings.</p>
                         </div>
                         <div class="wptw-field">
                             <label class="wptw-label">Default position</label>
                             <div class="wptw-radio-group">
-                                <?php foreach(['before_first_heading'=>'Before first heading','after_first_paragraph'=>'After first paragraph','shortcode_only'=>'Manual — [wptw_toc] shortcode only'] as $v=>$l): ?>
-                                <label class="wptw-radio"><input type="radio" name="<?php echo WPTW_OPTION;?>[position]" value="<?php echo $v;?>" <?php checked($o['position'],$v);?>><span><?php echo $l;?></span></label>
+                                <?php foreach ( [ 'before_first_heading' => 'Before first heading', 'after_first_paragraph' => 'After first paragraph', 'shortcode_only' => 'Manual — [wptw_toc] shortcode only' ] as $v => $l ) : ?>
+                                <label class="wptw-radio"><input type="radio" name="<?php echo esc_attr( WPTW_OPTION ); ?>[position]" value="<?php echo esc_attr( $v ); ?>" <?php checked( $o['position'], $v ); ?>><span><?php echo esc_html( $l ); ?></span></label>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -149,10 +149,10 @@ function wptw_render_settings_page() {
                         <div class="wptw-field">
                             <label class="wptw-label">Include heading levels</label>
                             <div class="wptw-hpicker">
-                                <?php foreach(['h2','h3','h4','h5','h6'] as $h): ?>
-                                <label class="wptw-hpick <?php echo in_array($h,(array)$o['heading_levels'],true)?'on':'';?>">
-                                    <input type="checkbox" name="<?php echo WPTW_OPTION;?>[heading_levels][]" value="<?php echo $h;?>" <?php checked(in_array($h,(array)$o['heading_levels'],true));?>>
-                                    <span><?php echo strtoupper($h);?></span>
+                                <?php foreach ( [ 'h2', 'h3', 'h4', 'h5', 'h6' ] as $h ) : ?>
+                                <label class="wptw-hpick <?php echo in_array( $h, (array) $o['heading_levels'], true ) ? 'on' : ''; ?>">
+                                    <input type="checkbox" name="<?php echo esc_attr( WPTW_OPTION ); ?>[heading_levels][]" value="<?php echo esc_attr( $h ); ?>" <?php checked( in_array( $h, (array) $o['heading_levels'], true ) ); ?>>
+                                    <span><?php echo esc_html( strtoupper( $h ) ); ?></span>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
@@ -162,7 +162,7 @@ function wptw_render_settings_page() {
                             <label class="wptw-label">Anchor prefix</label>
                             <div class="wptw-affixwrap">
                                 <span class="wptw-affix">#</span>
-                                <input type="text" name="<?php echo WPTW_OPTION;?>[anchor_prefix]" value="<?php echo esc_attr($o['anchor_prefix']);?>" class="wptw-affixinput" placeholder="section">
+                                <input type="text" name="<?php echo esc_attr( WPTW_OPTION ); ?>[anchor_prefix]" value="<?php echo esc_attr($o['anchor_prefix']);?>" class="wptw-affixinput" placeholder="section">
                                 <span class="wptw-affix wptw-affixr">-0</span>
                             </div>
                             <p class="wptw-help">Generates anchors like <code>#section-0</code>, <code>#section-1</code>.</p>
@@ -176,46 +176,46 @@ function wptw_render_settings_page() {
                     <div class="wptw-fields">
                         <div class="wptw-field">
                             <label class="wptw-label">TOC title</label>
-                            <input type="text" name="<?php echo WPTW_OPTION;?>[toc_title]" value="<?php echo esc_attr($o['toc_title']);?>" class="wptw-input">
+                            <input type="text" name="<?php echo esc_attr( WPTW_OPTION ); ?>[toc_title]" value="<?php echo esc_attr($o['toc_title']);?>" class="wptw-input">
                         </div>
                         <div class="wptw-field">
                             <label class="wptw-label">Default TOC state</label>
                             <div class="wptw-seg">
                                 <label class="wptw-segopt <?php echo $o['default_state']==='open'?'on':'';?>">
-                                    <input type="radio" name="<?php echo WPTW_OPTION;?>[default_state]" value="open" <?php checked($o['default_state'],'open');?>>
+                                    <input type="radio" name="<?php echo esc_attr( WPTW_OPTION ); ?>[default_state]" value="open" <?php checked($o['default_state'],'open');?>>
                                     ▾ Open
                                 </label>
                                 <label class="wptw-segopt <?php echo $o['default_state']==='closed'?'on':'';?>">
-                                    <input type="radio" name="<?php echo WPTW_OPTION;?>[default_state]" value="closed" <?php checked($o['default_state'],'closed');?>>
+                                    <input type="radio" name="<?php echo esc_attr( WPTW_OPTION ); ?>[default_state]" value="closed" <?php checked($o['default_state'],'closed');?>>
                                     ▸ Closed
                                 </label>
                             </div>
                             <p class="wptw-help">Can be overridden per post in the editor.</p>
                         </div>
 
-                        <?php foreach([
-                            'show_numbers'     =>['Section numbers',         'Show 1. / 1.1. / 2. numbering beside each entry.'],
-                            'smooth_scroll'    =>['Smooth scroll',           'Animate page scroll when a TOC link is clicked.'],
-                            'highlight_active' =>['Highlight active section','Track scroll position and highlight current section.'],
-                            'back_to_top'      =>['Back-to-top button',      'Floating button that appears after scrolling past the TOC.'],
-                            'reading_time'     =>['Reading time estimate',   'Show "X min read" in the TOC header.'],
-                            'reading_progress' =>['Reading progress bar',    'Thin bar below the TOC header that fills as the reader scrolls through the article. Uses the reading speed setting below.'],
-                        ] as $key=>[$label,$desc]): ?>
+                        <?php foreach ( [
+                            'show_numbers'     => [ 'Section numbers',         'Show 1. / 1.1. / 2. numbering beside each entry.' ],
+                            'smooth_scroll'    => [ 'Smooth scroll',           'Animate page scroll when a TOC link is clicked.' ],
+                            'highlight_active' => [ 'Highlight active section', 'Track scroll position and highlight current section.' ],
+                            'back_to_top'      => [ 'Back-to-top button',      'Floating button that appears after scrolling past the TOC.' ],
+                            'reading_time'     => [ 'Reading time estimate',   'Show "X min read" in the TOC header.' ],
+                            'reading_progress' => [ 'Reading progress bar',    'Thin bar below the TOC header that fills as the reader scrolls through the article. Uses the reading speed setting below.' ],
+                        ] as $key => [ $label, $desc ] ) : ?>
                         <div class="wptw-field wptw-togfield">
                             <div class="wptw-togrow">
                                 <label class="wptw-sw">
-                                    <input type="hidden" name="<?php echo WPTW_OPTION;?>[<?php echo $key;?>]" value="0">
-                                    <input type="checkbox" name="<?php echo WPTW_OPTION;?>[<?php echo $key;?>]" value="1" <?php checked(!empty($o[$key]));?>>
+                                    <input type="hidden" name="<?php echo esc_attr( WPTW_OPTION ); ?>[<?php echo esc_attr( $key ); ?>]" value="0">
+                                    <input type="checkbox" name="<?php echo esc_attr( WPTW_OPTION ); ?>[<?php echo esc_attr( $key ); ?>]" value="1" <?php checked( ! empty( $o[ $key ] ) ); ?>>
                                     <span class="wptw-swknob"></span>
                                 </label>
-                                <div><span class="wptw-swlabel"><?php echo $label;?></span><p class="wptw-help"><?php echo $desc;?></p></div>
+                                <div><span class="wptw-swlabel"><?php echo esc_html( $label ); ?></span><p class="wptw-help"><?php echo esc_html( $desc ); ?></p></div>
                             </div>
                         </div>
                         <?php endforeach; ?>
 
                         <div class="wptw-field">
                             <label class="wptw-label">Reading speed (words per minute)</label>
-                            <input type="number" name="<?php echo WPTW_OPTION;?>[reading_wpm]" value="<?php echo esc_attr($o['reading_wpm']);?>" min="50" max="1000" class="wptw-num">
+                            <input type="number" name="<?php echo esc_attr( WPTW_OPTION ); ?>[reading_wpm]" value="<?php echo esc_attr($o['reading_wpm']);?>" min="50" max="1000" class="wptw-num">
                             <p class="wptw-help">Controls both the "X min read" estimate and how fast the reading progress bar fills. Average adult reads ~200 wpm.</p>
                         </div>
 
@@ -224,8 +224,8 @@ function wptw_render_settings_page() {
                         <div class="wptw-field wptw-togfield">
                             <div class="wptw-togrow">
                                 <label class="wptw-sw">
-                                    <input type="hidden" name="<?php echo WPTW_OPTION;?>[sticky_header]" value="0">
-                                    <input type="checkbox" name="<?php echo WPTW_OPTION;?>[sticky_header]" value="1" id="wptw-sticky-toggle" <?php checked(!empty($o['sticky_header']));?>>
+                                    <input type="hidden" name="<?php echo esc_attr( WPTW_OPTION ); ?>[sticky_header]" value="0">
+                                    <input type="checkbox" name="<?php echo esc_attr( WPTW_OPTION ); ?>[sticky_header]" value="1" id="wptw-sticky-toggle" <?php checked(!empty($o['sticky_header']));?>>
                                     <span class="wptw-swknob"></span>
                                 </label>
                                 <div>
@@ -240,12 +240,12 @@ function wptw_render_settings_page() {
                                 <input type="range" id="wptw-sticky-range" min="0" max="200" value="<?php echo esc_attr($o['sticky_top_offset']);?>" class="wptw-range">
                                 <output id="wptw-sticky-out" class="wptw-rval"><?php echo esc_html($o['sticky_top_offset']);?>px</output>
                             </div>
-                            <input type="number" id="wptw-sticky-num" name="<?php echo WPTW_OPTION;?>[sticky_top_offset]" value="<?php echo esc_attr($o['sticky_top_offset']);?>" min="0" max="300" class="wptw-num" style="margin-top:6px">
+                            <input type="number" id="wptw-sticky-num" name="<?php echo esc_attr( WPTW_OPTION ); ?>[sticky_top_offset]" value="<?php echo esc_attr($o['sticky_top_offset']);?>" min="0" max="300" class="wptw-num" style="margin-top:6px">
                             <p class="wptw-help">Distance from viewport top when fixed. Set to your site's fixed navigation height.</p>
                         </div>
                         <div class="wptw-field">
                             <label class="wptw-label">Smooth scroll offset (px)</label>
-                            <input type="number" name="<?php echo WPTW_OPTION;?>[scroll_offset]" value="<?php echo esc_attr($o['scroll_offset']);?>" min="0" max="500" class="wptw-num">
+                            <input type="number" name="<?php echo esc_attr( WPTW_OPTION ); ?>[scroll_offset]" value="<?php echo esc_attr($o['scroll_offset']);?>" min="0" max="500" class="wptw-num">
                             <p class="wptw-help">Clearance when jumping to a section — set to your site header height + sticky TOC bar height combined.</p>
                         </div>
                     </div>
@@ -258,8 +258,8 @@ function wptw_render_settings_page() {
                         <div class="wptw-field">
                             <label class="wptw-label">Presets</label>
                             <div class="wptw-presets" id="wptw-presets">
-                                <?php foreach($presets as $pid=>$p): ?>
-                                <button type="button" class="wptw-pbtn" data-preset="<?php echo esc_attr($pid);?>"><?php echo $p['emoji'];?> <?php echo esc_html($p['label']);?></button>
+                                <?php foreach ( $presets as $pid => $p ) : ?>
+                                <button type="button" class="wptw-pbtn" data-preset="<?php echo esc_attr( $pid ); ?>"><?php echo esc_html( $p['emoji'] ); ?> <?php echo esc_html( $p['label'] ); ?></button>
                                 <?php endforeach; ?>
                                 <button type="button" class="wptw-pbtn wptw-reset" data-preset="__reset">↩ Reset</button>
                             </div>
@@ -273,21 +273,21 @@ function wptw_render_settings_page() {
                             'List items'     =>['color_link'=>'Link text','color_link_hover'=>'Link hover','color_active_bar'=>'Active — left bar','color_active_bg'=>'Active — background','color_number'=>'Section numbers'],
                             'Back-to-top'    =>['color_back_top_bg'=>'Button background','color_back_top_fg'=>'Button icon'],
                         ];
-                        foreach($cgroups as $grp=>$fields): ?>
+                        foreach ( $cgroups as $grp => $fields ) : ?>
                         <div class="wptw-cgroup">
-                            <p class="wptw-cglabel"><?php echo $grp; ?></p>
+                            <p class="wptw-cglabel"><?php echo esc_html( $grp ); ?></p>
                             <div class="wptw-crow">
                                 <?php foreach($fields as $ck=>$cl): ?>
                                 <div class="wptw-cfield">
                                     <label class="wptw-clabel"><?php echo esc_html($cl);?></label>
                                     <div class="wptw-cswatch">
-                                        <input type="color" name="<?php echo WPTW_OPTION;?>[<?php echo $ck;?>]"
+                                        <input type="color" name="<?php echo esc_attr( WPTW_OPTION ); ?>[<?php echo esc_attr( $ck ); ?>]"
                                                value="<?php echo esc_attr($o[$ck]);?>"
-                                               data-key="<?php echo $ck;?>"
+                                               data-key="<?php echo esc_attr( $ck ); ?>"
                                                class="wptw-color"
-                                               data-default="<?php echo esc_attr(wptw_defaults()[$ck]);?>">
+                                               data-default="<?php echo esc_attr( wptw_defaults()[ $ck ] ); ?>">
                                         <span class="wptw-chex"><?php echo esc_html($o[$ck]);?></span>
-                                        <button type="button" class="wptw-creset" title="Reset to default" data-key="<?php echo $ck;?>" data-default="<?php echo esc_attr(wptw_defaults()[$ck]);?>">↺</button>
+                                        <button type="button" class="wptw-creset" title="Reset to default" data-key="<?php echo esc_attr( $ck ); ?>" data-default="<?php echo esc_attr( wptw_defaults()[ $ck ] ); ?>">↺</button>
                                     </div>
                                 </div>
                                 <?php endforeach; ?>
@@ -303,7 +303,7 @@ function wptw_render_settings_page() {
                     <div class="wptw-fields">
                         <div class="wptw-field">
                             <label class="wptw-label">Font family</label>
-                            <select name="<?php echo WPTW_OPTION;?>[font_family]" id="wptw-font-family" class="wptw-input">
+                            <select name="<?php echo esc_attr( WPTW_OPTION ); ?>[font_family]" id="wptw-font-family" class="wptw-input">
                                 <?php foreach($fonts as $fv=>$fl): ?>
                                 <option value="<?php echo esc_attr($fv);?>" <?php selected($o['font_family'],$fv);?>><?php echo esc_html($fl);?></option>
                                 <?php endforeach; ?>
@@ -334,17 +334,17 @@ function wptw_render_settings_page() {
                                 <input type="range" class="wptw-range wptw-slsync" data-num="wptw-num-lsp" min="0" max="50" value="<?php echo esc_attr($o['letter_spacing_label']);?>">
                                 <output class="wptw-rval"><?php echo esc_html($o['letter_spacing_label']);?></output>
                             </div>
-                            <input type="number" id="wptw-num-lsp" name="<?php echo WPTW_OPTION;?>[letter_spacing_label]" value="<?php echo esc_attr($o['letter_spacing_label']);?>" min="0" max="50" class="wptw-num" style="margin-top:6px">
+                            <input type="number" id="wptw-num-lsp" name="<?php echo esc_attr( WPTW_OPTION ); ?>[letter_spacing_label]" value="<?php echo esc_attr($o['letter_spacing_label']);?>" min="0" max="50" class="wptw-num" style="margin-top:6px">
                             <p class="wptw-help">In hundredths of em. 13 = 0.13em. Controls tracking on the "Contents" title label.</p>
                         </div>
 
                         <div class="wptw-field">
                             <label class="wptw-label">Title label text transform</label>
                             <div class="wptw-seg">
-                                <?php foreach(['uppercase'=>'UPPERCASE','capitalize'=>'Capitalize','none'=>'none'] as $tv=>$tl): ?>
-                                <label class="wptw-segopt <?php echo $o['text_transform_label']===$tv?'on':'';?>">
-                                    <input type="radio" name="<?php echo WPTW_OPTION;?>[text_transform_label]" value="<?php echo $tv;?>" <?php checked($o['text_transform_label'],$tv);?>>
-                                    <?php echo $tl;?>
+                                <?php foreach ( [ 'uppercase' => 'UPPERCASE', 'capitalize' => 'Capitalize', 'none' => 'none' ] as $tv => $tl ) : ?>
+                                <label class="wptw-segopt <?php echo $o['text_transform_label'] === $tv ? 'on' : ''; ?>">
+                                    <input type="radio" name="<?php echo esc_attr( WPTW_OPTION ); ?>[text_transform_label]" value="<?php echo esc_attr( $tv ); ?>" <?php checked( $o['text_transform_label'], $tv ); ?>>
+                                    <?php echo esc_html( $tl ); ?>
                                 </label>
                                 <?php endforeach; ?>
                             </div>
@@ -362,7 +362,7 @@ function wptw_render_settings_page() {
                     <div class="wptw-fields">
                         <div class="wptw-field">
                             <label class="wptw-label">Custom CSS</label>
-                            <textarea name="<?php echo WPTW_OPTION;?>[custom_css]" class="wptw-textarea" rows="12" spellcheck="false"><?php echo esc_textarea($o['custom_css']);?></textarea>
+                            <textarea name="<?php echo esc_attr( WPTW_OPTION ); ?>[custom_css]" class="wptw-textarea" rows="12" spellcheck="false"><?php echo esc_textarea($o['custom_css']);?></textarea>
                             <p class="wptw-help">Appended after all plugin styles. Selectors: <code>.wptw-toc</code>, <code>.wptw-toc__label</code>, <code>.wptw-toc__rt</code>, <code>.wptw-toc__num</code>, <code>.wptw-toc__link</code>, <code>.wptw-toc__toggle</code></p>
                         </div>
                         <div class="wptw-field">
@@ -496,12 +496,12 @@ function wptw_ph( string $t, string $d ): void {
 function wptw_sf( string $key, string $label, $val, int $min, int $max ): void {
     $id = 'wptw-num-' . $key;
     echo '<div class="wptw-field">';
-    echo '<label class="wptw-label">' . esc_html($label) . '</label>';
+    echo '<label class="wptw-label">' . esc_html( $label ) . '</label>';
     echo '<div class="wptw-slrow">';
-    echo '<input type="range" class="wptw-range wptw-slsync" data-num="' . $id . '" min="' . $min . '" max="' . $max . '" value="' . esc_attr($val) . '">';
-    echo '<output class="wptw-rval">' . esc_html($val) . '</output>';
+    echo '<input type="range" class="wptw-range wptw-slsync" data-num="' . esc_attr( $id ) . '" min="' . (int) $min . '" max="' . (int) $max . '" value="' . esc_attr( $val ) . '">';
+    echo '<output class="wptw-rval">' . esc_html( $val ) . '</output>';
     echo '</div>';
-    echo '<input type="number" id="' . $id . '" name="' . WPTW_OPTION . '[' . $key . ']" value="' . esc_attr($val) . '" min="' . $min . '" max="' . $max . '" class="wptw-num" style="margin-top:6px">';
+    echo '<input type="number" id="' . esc_attr( $id ) . '" name="' . esc_attr( WPTW_OPTION ) . '[' . esc_attr( $key ) . ']" value="' . esc_attr( $val ) . '" min="' . (int) $min . '" max="' . (int) $max . '" class="wptw-num" style="margin-top:6px">';
     echo '</div>';
 }
 
@@ -516,8 +516,8 @@ function wptw_admin_js() {
     (function(){
         'use strict';
 
-        var presets  = <?php echo $presets_json; ?>;
-        var defClrs  = <?php echo $defaults_json; ?>;
+        var presets  = <?php echo $presets_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+        var defClrs  = <?php echo $defaults_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
         presets['__reset'] = defClrs;
 
         /* ── TABS ── */
@@ -644,7 +644,10 @@ function wptw_admin_js() {
         });
 
         /* ── Save flash ── */
-        <?php if ( isset( $_GET['settings-updated'] ) ) : ?>
+        <?php 
+        // Security: Nonce verification is handled by options.php before redirection.
+        // We only show a UI flash if the settings-updated flag is present.
+        if ( ! empty( $_GET['settings-updated'] ) ) : ?>
         var sv = document.getElementById('wptw-saved');
         if(sv){ sv.classList.add('on'); setTimeout(function(){ sv.classList.remove('on'); }, 3000); }
         <?php endif; ?>

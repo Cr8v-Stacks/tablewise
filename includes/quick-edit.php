@@ -112,7 +112,7 @@ add_action( 'admin_footer-edit.php', function () {
     ?>
     <script>
     (function($){
-        var qeNonce = '<?php echo wp_create_nonce( 'wptw_qe_save' ); ?>';
+        var qeNonce = '<?php echo esc_js( wp_create_nonce( 'wptw_qe_save' ) ); ?>';
 
         /* Pre-populate Quick Edit fields when row is opened */
         $(document).on('click', '.editinline', function(){
@@ -176,16 +176,21 @@ add_action( 'manage_posts_custom_column', function( $col, $post_id ) {
 
 /* ─── AJAX handler for Quick Edit save ───────────────────── */
 add_action( 'wp_ajax_wptw_quick_edit_save', function () {
-    $post_id = (int) ( $_POST['post_id'] ?? 0 );
-    if ( ! $post_id ) wp_send_json_error( 'No post ID' );
-    if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'wptw_qe_save' ) ) wp_send_json_error( 'Nonce fail' );
+    check_ajax_referer( 'wptw_qe_save', 'nonce' );
+
+    $post_id = isset( $_POST['post_id'] ) ? (int) $_POST['post_id'] : 0;
+    if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+        wp_send_json_error( 'Unauthorized' );
+    }
+
     if ( ! current_user_can( 'edit_post', $post_id ) ) wp_send_json_error( 'Permissions' );
 
     $existing = wptw_post_meta( $post_id );
+
     $existing['disable']       = ! empty( $_POST['disable'] ) ? 1 : 0;
-    $existing['default_state'] = in_array( $_POST['default_state'] ?? '', [ 'open','closed','' ], true ) ? $_POST['default_state'] : '';
-    $existing['position']      = in_array( $_POST['position'] ?? '', [ 'before_first_heading','after_first_paragraph','shortcode_only','' ], true ) ? $_POST['position'] : '';
-    $existing['show_numbers']  = in_array( $_POST['show_numbers'] ?? '', [ '0','1','' ], true ) ? $_POST['show_numbers'] : '';
+    $existing['default_state'] = in_array( sanitize_text_field( wp_unslash( $_POST['default_state'] ?? '' ) ), [ 'open', 'closed', '' ], true ) ? sanitize_text_field( wp_unslash( $_POST['default_state'] ) ) : '';
+    $existing['position']      = in_array( sanitize_text_field( wp_unslash( $_POST['position'] ?? '' ) ), [ 'before_first_heading', 'after_first_paragraph', 'shortcode_only', '' ], true ) ? sanitize_text_field( wp_unslash( $_POST['position'] ) ) : '';
+    $existing['show_numbers']  = in_array( sanitize_text_field( wp_unslash( $_POST['show_numbers'] ?? '' ) ), [ '0', '1', '' ], true ) ? sanitize_text_field( wp_unslash( $_POST['show_numbers'] ) ) : '';
 
     update_post_meta( $post_id, WPTW_META, $existing );
     wp_send_json_success();

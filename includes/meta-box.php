@@ -44,7 +44,7 @@ function wptw_render_meta_box( WP_Post $post ) {
                 <label class="wptw-meta-label" for="wptw-meta-state">Initial TOC state</label>
                 <select name="wptw_meta[default_state]" id="wptw-meta-state" class="wptw-meta-select">
                     <option value="" <?php selected( $meta['default_state'] ?? '', '' ); ?>>
-                        — Use global setting (<?php echo $g['default_state']; ?>)
+                        — Use global setting (<?php echo esc_html( $g['default_state'] ); ?>)
                     </option>
                     <option value="open"   <?php selected( $meta['default_state'] ?? '', 'open'   ); ?>>Open</option>
                     <option value="closed" <?php selected( $meta['default_state'] ?? '', 'closed' ); ?>>Closed</option>
@@ -142,11 +142,11 @@ function wptw_render_meta_box( WP_Post $post ) {
 /* ─── Save meta box ───────────────────────────────────────── */
 add_action( 'save_post', function ( $post_id ) {
     if ( ! isset( $_POST['wptw_meta_nonce'] ) ) return;
-    if ( ! wp_verify_nonce( $_POST['wptw_meta_nonce'], 'wptw_meta_save' ) ) return;
+    if ( ! wp_verify_nonce( wp_unslash( $_POST['wptw_meta_nonce'] ), 'wptw_meta_save' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
-    $raw  = $_POST['wptw_meta'] ?? [];
+    $raw  = isset( $_POST['wptw_meta'] ) ? wp_unslash( $_POST['wptw_meta'] ) : [];
     $clean = [];
 
     $clean['disable']       = ! empty( $raw['disable'] ) ? 1 : 0;
@@ -185,12 +185,12 @@ add_action( 'enqueue_block_editor_assets', function () {
 } );
 
 function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
-    $meta_json = wp_json_encode( $meta );
     $global_state = esc_js( $g['default_state'] );
     $global_title = esc_js( $g['toc_title'] );
     $meta_key     = WPTW_META;
 
-    return <<<JS
+    ob_start();
+    ?>
 (function(){
     var el   = wp.element.createElement;
     var __   = wp.i18n.__;
@@ -201,7 +201,7 @@ function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
     var { PanelBody, SelectControl, TextControl, ToggleControl, Tip } = wp.components;
     var { useSelect, useDispatch } = wp.data;
 
-    function WPTableWiseSidebar(){
+    function TableWiseSidebar(){
         var postId = useSelect(function(s){ return s('core/editor').getCurrentPostId(); });
         var metaRaw = useSelect(function(s){
             return s('core/editor').getEditedPostAttribute('meta') || {};
@@ -209,19 +209,19 @@ function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
 
         var { editPost } = useDispatch('core/editor');
 
-        var meta = metaRaw['{$meta_key}'] || {};
+        var meta = metaRaw['<?php echo esc_js( $meta_key ); ?>'] || {};
 
         function setMeta(key, val){
-            var updated = Object.assign({}, metaRaw['{$meta_key}'] || {});
+            var updated = Object.assign({}, metaRaw['<?php echo esc_js( $meta_key ); ?>'] || {});
             updated[key] = val;
             var metaUpdate = {};
-            metaUpdate['{$meta_key}'] = updated;
+            metaUpdate['<?php echo esc_js( $meta_key ); ?>'] = updated;
             editPost({ meta: metaUpdate });
         }
 
         return el(frag, null,
-            el(PluginSidebarMoreMenuItem, { target: 'wptw-sidebar' }, 'WP TableWise'),
-            el(PluginSidebar, { name: 'wptw-sidebar', title: 'WP TableWise', icon: el('svg',{width:16,height:16,viewBox:'0 0 16 16',fill:'none'},el('rect',{x:.5,y:.5,width:15,height:15,rx:3,stroke:'currentColor','strokeWidth':1.2}),el('path',{d:'M4 5h4M4 8h8M4 11h6',stroke:'currentColor','strokeWidth':1.2,'strokeLinecap':'round'})) },
+            el(PluginSidebarMoreMenuItem, { target: 'wptw-sidebar' }, 'TableWise'),
+            el(PluginSidebar, { name: 'wptw-sidebar', title: 'TableWise', icon: el('svg',{width:16,height:16,viewBox:'0 0 16 16',fill:'none'},el('rect',{x:.5,y:.5,width:15,height:15,rx:3,stroke:'currentColor','strokeWidth':1.2}),el('path',{d:'M4 5h4M4 8h8M4 11h6',stroke:'currentColor','strokeWidth':1.2,'strokeLinecap':'round'})) },
                 el(PanelBody, { title: 'Per-post Settings', initialOpen: true },
 
                     el(ToggleControl, {
@@ -235,7 +235,7 @@ function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
                         label: 'Initial TOC state',
                         value: meta.default_state || '',
                         options: [
-                            { value: '', label: '— Global (' + '{$global_state}' + ')' },
+                            { value: '', label: '— Global (' + '<?php echo esc_js( $global_state ); ?>' + ')' },
                             { value: 'open',   label: 'Open'   },
                             { value: 'closed', label: 'Closed' },
                         ],
@@ -257,7 +257,7 @@ function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
                     el(TextControl, {
                         label: 'TOC title',
                         value: meta.toc_title || '',
-                        placeholder: '{$global_title}',
+                        placeholder: '<?php echo esc_js( $global_title ); ?>',
                         onChange: function(v){ setMeta('toc_title', v); },
                         help: 'Leave blank to use global title.'
                     }),
@@ -301,7 +301,8 @@ function wptw_gutenberg_sidebar_js( array $meta, array $g ): string {
         );
     }
 
-    registerPlugin('wp-tablewise', { render: WPTableWiseSidebar });
+    registerPlugin('tablewise', { render: TableWiseSidebar });
 })();
-JS;
+    <?php
+    return (string) ob_get_clean();
 }

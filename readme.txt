@@ -1,14 +1,14 @@
-=== WP TableWise ===
+=== TableWise ===
 Contributors: cr8vstacks
-Tags: table of contents, toc, headings, navigation, reading time, sticky, accessibility
+Tags: table of contents, toc, navigation, reading time, sticky
 Requires at least: 5.8
-Tested up to: 6.7
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-A clean, minimal, and highly customisable Table of Contents plugin. Sticky header, per-post overrides, active-section tracking, reading time, colour presets, and more.
+Customisable Table of Contents for posts. Features sticky header, active tracking, reading time, color presets, and per-post control.
 
 == Description ==
 
@@ -56,7 +56,7 @@ WP TableWise automatically generates a beautiful, accessible Table of Contents f
 
 == Installation ==
 
-1. Upload the `wp-tablewise` folder to `/wp-content/plugins/`
+1. Upload the `tablewise` folder to `/wp-content/plugins/`
 2. Activate the plugin through the **Plugins** menu in WordPress
 3. Go to **Settings → WP TableWise** to configure
 4. Optionally override settings per post via the post editor sidebar or Quick Edit
@@ -83,6 +83,14 @@ Yes. Open any post in the editor and use the WP TableWise sidebar panel (Gutenbe
 Use `.wptw-toc` as your root selector in the Custom CSS field. All internal elements are prefixed `.wptw-toc__*`.
 
 == Changelog ==
+
+= 1.2.0 =
+* Improved sticky header logic for better viewport tracking
+* Added Per-Post Settings via Gutenberg Sidebar (registerPlugin)
+* Enhanced Quick Edit integration with expanded controls
+* Refined reading time estimation with configurable WPM
+* Fixed a TOC nesting bug where the table could latch on non-article paragraphs
+* General performance and accessibility improvements
 
 = 1.1.0 =
 * Complete plugin rewrite

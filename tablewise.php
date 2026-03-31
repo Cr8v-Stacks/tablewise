@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name:       WP TableWise
- * Plugin URI:        https://cr8vstacks.com/wp-tablewise
+ * Plugin Name:       TableWise
+ * Plugin URI:        https://cr8vstacks.com/tablewise
  * Description:       A clean, minimal, and highly customisable Table of Contents plugin. Supports sticky headers, per-post overrides, active-section tracking, reading time estimates, and a full settings panel.
  * Version:           1.2.0
  * Requires at least: 5.8
@@ -10,7 +10,7 @@
  * Author URI:        https://cr8vstacks.com
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       wp-tablewise
+ * Text Domain:       tablewise
  * Domain Path:       /languages
  */
 

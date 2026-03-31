@@ -99,7 +99,7 @@ function wptw_build_toc( string &$content, int $post_id = 0 ): ?string {
      *     .wptw-toc__body        — overflow:hidden collapse region
      *       ol.wptw-toc__list
      */
-    $out  = '<div class="wptw-toc' . $sticky_cls . '" id="' . $toc_id . '" role="navigation" aria-label="' . esc_attr__('Table of contents','wp-tablewise') . '">';
+    $out  = '<div class="wptw-toc' . $sticky_cls . '" id="' . $toc_id . '" role="navigation" aria-label="' . esc_attr__('Table of contents','tablewise') . '">';
     $out .= '<div class="wptw-toc__head">';
     $out .=   '<div class="wptw-toc__head-left">';
     $out .=     '<span class="wptw-toc__label">' . esc_html($toc_title) . '</span>';
@@ -158,7 +158,7 @@ function wptw_build_toc( string &$content, int $post_id = 0 ): ?string {
 
     static $btt_done = false;
     if ( ! $btt_done && (bool) wptw_get('back_to_top') ) {
-        $out     .= '<button type="button" class="wptw-btt" aria-label="' . esc_attr__('Back to contents','wp-tablewise') . '" hidden>↑</button>';
+        $out     .= '<button type="button" class="wptw-btt" aria-label="' . esc_attr__('Back to contents','tablewise') . '" hidden>↑</button>';
         $btt_done = true;
     }
 
@@ -169,7 +169,7 @@ function wptw_build_toc( string &$content, int $post_id = 0 ): ?string {
 add_action( 'wp_enqueue_scripts', function () {
     if ( ! is_singular( (array) wptw_get('post_types') ) ) return;
     $url = wptw_google_font_url( wptw_get('font_family') );
-    if ( $url ) wp_enqueue_style( 'wptw-font', $url, [], null );
+    if ( $url ) wp_enqueue_style( 'wptw-font', $url, [], WPTW_VERSION );
 } );
 
 /* ─── Frontend styles ─────────────────────────────────────── */
@@ -184,35 +184,35 @@ function wptw_frontend_styles() {
     ?>
     <style id="wptw-styles">
     .wptw-toc {
-        --wptw-bg:          <?php echo $o['color_bg']; ?>;
-        --wptw-border:      <?php echo $o['color_border']; ?>;
-        --wptw-radius:      <?php echo (int)$o['border_radius']; ?>px;
-        --wptw-head-bg:     <?php echo $o['color_header_bg']; ?>;
-        --wptw-label-c:     <?php echo $o['color_label']; ?>;
-        --wptw-label-sz:    <?php echo (int)$o['font_size_label']; ?>px;
-        --wptw-label-ls:    <?php echo $ls; ?>em;
-        --wptw-label-tt:    <?php echo $o['text_transform_label']; ?>;
-        --wptw-rt-c:        <?php echo $o['color_rt']; ?>;
-        --wptw-rt-sz:       <?php echo (int)$o['font_size_rt']; ?>px;
-        --wptw-rtbar-fill:  <?php echo $o['color_rt_bar']; ?>;
-        --wptw-rtbar-bg:    <?php echo $o['color_rt_bar_bg']; ?>;
-        --wptw-tog-bg:      <?php echo $o['color_toggle_bg']; ?>;
-        --wptw-tog-fg:      <?php echo $o['color_toggle_fg']; ?>;
-        --wptw-tog-bdr:     <?php echo $tog_border; ?>;
-        --wptw-link:        <?php echo $o['color_link']; ?>;
-        --wptw-link-hov:    <?php echo $o['color_link_hover']; ?>;
-        --wptw-bar:         <?php echo $o['color_active_bar']; ?>;
-        --wptw-act-bg:      <?php echo $o['color_active_bg']; ?>;
-        --wptw-num-c:       <?php echo $o['color_number']; ?>;
-        --wptw-num-sz:      <?php echo (int)$o['font_size_num']; ?>px;
-        --wptw-flink:       <?php echo (int)$o['font_size_link']; ?>px;
-        --wptw-fsub:        <?php echo (int)$o['font_size_sub']; ?>px;
-        --wptw-btt-bg:      <?php echo $o['color_back_top_bg']; ?>;
-        --wptw-btt-fg:      <?php echo $o['color_back_top_fg']; ?>;
-        --wptw-font:        <?php echo $font; ?>;
+        --wptw-bg:          <?php echo esc_html( $o['color_bg'] ); ?>;
+        --wptw-border:      <?php echo esc_html( $o['color_border'] ); ?>;
+        --wptw-radius:      <?php echo (int) $o['border_radius']; ?>px;
+        --wptw-head-bg:     <?php echo esc_html( $o['color_header_bg'] ); ?>;
+        --wptw-label-c:     <?php echo esc_html( $o['color_label'] ); ?>;
+        --wptw-label-sz:    <?php echo (int) $o['font_size_label']; ?>px;
+        --wptw-label-ls:    <?php echo esc_html( $ls ); ?>em;
+        --wptw-label-tt:    <?php echo esc_html( $o['text_transform_label'] ); ?>;
+        --wptw-rt-c:        <?php echo esc_html( $o['color_rt'] ); ?>;
+        --wptw-rt-sz:       <?php echo (int) $o['font_size_rt']; ?>px;
+        --wptw-rtbar-fill:  <?php echo esc_html( $o['color_rt_bar'] ); ?>;
+        --wptw-rtbar-bg:    <?php echo esc_html( $o['color_rt_bar_bg'] ); ?>;
+        --wptw-tog-bg:      <?php echo esc_html( $o['color_toggle_bg'] ); ?>;
+        --wptw-tog-fg:      <?php echo esc_html( $o['color_toggle_fg'] ); ?>;
+        --wptw-tog-bdr:     <?php echo esc_html( $tog_border ); ?>;
+        --wptw-link:        <?php echo esc_html( $o['color_link'] ); ?>;
+        --wptw-link-hov:    <?php echo esc_html( $o['color_link_hover'] ); ?>;
+        --wptw-bar:         <?php echo esc_html( $o['color_active_bar'] ); ?>;
+        --wptw-act-bg:      <?php echo esc_html( $o['color_active_bg'] ); ?>;
+        --wptw-num-c:       <?php echo esc_html( $o['color_number'] ); ?>;
+        --wptw-num-sz:      <?php echo (int) $o['font_size_num']; ?>px;
+        --wptw-flink:       <?php echo (int) $o['font_size_link']; ?>px;
+        --wptw-fsub:        <?php echo (int) $o['font_size_sub']; ?>px;
+        --wptw-btt-bg:      <?php echo esc_html( $o['color_back_top_bg'] ); ?>;
+        --wptw-btt-fg:      <?php echo esc_html( $o['color_back_top_fg'] ); ?>;
+        --wptw-font:        <?php echo esc_html( $font ); ?>;
         --wptw-mono:        'DM Mono','Fira Mono','Courier New',monospace;
         --wptw-ease:        200ms cubic-bezier(0.4,0,0.2,1);
-        --wptw-sticky-top:  <?php echo (int)$o['sticky_top_offset']; ?>px;
+        --wptw-sticky-top:  <?php echo (int) $o['sticky_top_offset']; ?>px;
     }
 
     /* ── Card ─────────────────────────────────────── */
@@ -464,7 +464,7 @@ function wptw_frontend_styles() {
         .wptw-btt                           { bottom:16px; right:16px; width:38px; height:38px; font-size:15px; }
     }
 
-    <?php if(!empty($o['custom_css'])) echo $o['custom_css']; ?>
+    <?php if ( ! empty( $o['custom_css'] ) ) echo wp_strip_all_tags( $o['custom_css'] ); ?>
     </style>
     <?php
 }
