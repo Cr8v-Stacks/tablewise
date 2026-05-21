@@ -34,6 +34,27 @@ function wptw_google_font_url( string $font ): string {
     return "https://fonts.googleapis.com/css2?family=" . urlencode( $font ) . ":wght@400;500;600&display=swap";
 }
 
+function wptw_toc_layouts(): array {
+    return [
+        'default' => [
+            'label' => 'Minimalist',
+            'desc'  => 'The original TableWise card layout.',
+        ],
+        'manuscript' => [
+            'label' => 'Manuscript',
+            'desc'  => 'Dark editorial chapter style with timeline nodes.',
+        ],
+        'editorial' => [
+            'label' => 'Soft editorial',
+            'desc'  => 'Clean card with guided steps and a calm reading flow.',
+        ],
+        'brutalist' => [
+            'label' => 'Brutalist',
+            'desc'  => 'Bold typographic rows with high-contrast structure.',
+        ],
+    ];
+}
+
 function wptw_defaults(): array {
     return [
         /* Visibility */
@@ -47,6 +68,7 @@ function wptw_defaults(): array {
 
         /* Display */
         'toc_title'             => 'Contents',
+        'toc_layout'            => 'manuscript',
         'position'              => 'before_first_heading',
         'default_state'         => 'open',
         'show_numbers'          => true,
@@ -63,31 +85,31 @@ function wptw_defaults(): array {
         'sticky_top_offset'     => 20,
 
         /* Colours — TOC card */
-        'color_bg'              => '#ffffff',
-        'color_border'          => '#e8e8e8',
+        'color_bg'              => '#0f172a',
+        'color_border'          => '#243044',
 
         /* Colours — header bar */
-        'color_header_bg'       => '#fafafa',
-        'color_label'           => '#999999',   // .wptw-toc__label
-        'color_rt'              => '#bbbbbb',   // .wptw-toc__rt (reading time text)
-        'color_rt_bar'          => '#111111',   // reading progress bar fill
-        'color_rt_bar_bg'       => '#e8e8e8',   // reading progress bar track
+        'color_header_bg'       => '#0b1120',
+        'color_label'           => '#d97706',   // .wptw-toc__label
+        'color_rt'              => '#94a3b8',   // .wptw-toc__rt (reading time text)
+        'color_rt_bar'          => '#d97706',   // reading progress bar fill
+        'color_rt_bar_bg'       => '#243044',   // reading progress bar track
 
         /* Colours — toggle button */
-        'color_toggle_bg'       => '#111111',
-        'color_toggle_fg'       => '#ffffff',
-        'color_toggle_border'   => '#111111',
+        'color_toggle_bg'       => '#f8fafc',
+        'color_toggle_fg'       => '#0f172a',
+        'color_toggle_border'   => '#f8fafc',
 
         /* Colours — list */
-        'color_link'            => '#333333',
-        'color_link_hover'      => '#000000',
-        'color_active_bar'      => '#111111',
-        'color_active_bg'       => '#f4f4f4',
-        'color_number'          => '#cccccc',   // .wptw-toc__num
+        'color_link'            => '#cbd5e1',
+        'color_link_hover'      => '#ffffff',
+        'color_active_bar'      => '#d97706',
+        'color_active_bg'       => '#1e293b',
+        'color_number'          => '#d97706',   // .wptw-toc__num
 
         /* Colours — back-to-top */
-        'color_back_top_bg'     => '#111111',
-        'color_back_top_fg'     => '#ffffff',
+        'color_back_top_bg'     => '#f8fafc',
+        'color_back_top_fg'     => '#0f172a',
 
         /* Typography — link list */
         'font_family'           => 'system',

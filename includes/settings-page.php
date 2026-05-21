@@ -18,6 +18,16 @@ add_action( 'admin_enqueue_scripts', function ( $hook ) {
     add_action( 'admin_footer', 'wptw_admin_js', 20 );
 } );
 
+add_filter( 'admin_footer_text', function ( $text ) {
+    $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+    return $screen && $screen->id === 'settings_page_tablewise' ? '' : $text;
+}, 20 );
+
+add_filter( 'update_footer', function ( $text ) {
+    $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+    return $screen && $screen->id === 'settings_page_tablewise' ? '' : $text;
+}, 20 );
+
 /* ── Sanitise ─────────────────────────────────────────────── */
 function wptw_sanitize_settings( $raw ): array {
     $d = wptw_defaults();
@@ -31,6 +41,8 @@ function wptw_sanitize_settings( $raw ): array {
                                     : [ 'h2','h3','h4' ];
     $clean['anchor_prefix']     = sanitize_key( $raw['anchor_prefix'] ?? 'section' ) ?: 'section';
     $clean['toc_title']         = sanitize_text_field( $raw['toc_title'] ?? 'Contents' );
+    $clean['toc_layout']        = array_key_exists( $raw['toc_layout'] ?? 'manuscript', wptw_toc_layouts() )
+                                    ? $raw['toc_layout'] : 'manuscript';
     $clean['position']          = in_array( $raw['position'] ?? '', [ 'before_first_heading','after_first_paragraph','shortcode_only' ], true )
                                     ? $raw['position'] : 'before_first_heading';
     $clean['default_state']     = ( $raw['default_state'] ?? 'open' ) === 'closed' ? 'closed' : 'open';
@@ -55,6 +67,7 @@ function wptw_sanitize_settings( $raw ): array {
     foreach ( $color_keys as $k ) {
         $clean[ $k ] = wptw_sanitize_color( $raw[ $k ] ?? '', $d[ $k ] );
     }
+    $clean = wptw_normalize_color_rules( $clean, $clean['toc_layout'] );
 
     $allowed_fonts = array_keys( wptw_available_fonts() );
     $clean['font_family']          = in_array( $raw['font_family'] ?? 'system', $allowed_fonts, true ) ? $raw['font_family'] : 'system';
@@ -72,6 +85,92 @@ function wptw_sanitize_settings( $raw ): array {
     return $clean;
 }
 
+function wptw_normalize_color_rules( array $c, string $layout = 'default' ): array {
+    $bg      = $c['color_bg'] ?? '#ffffff';
+    $head_bg = $c['color_header_bg'] ?? '#fafaf9';
+
+    if ( abs( wptw_color_luminance( $bg ) - wptw_color_luminance( $head_bg ) ) < 0.06 ) {
+        $head_bg = wptw_color_luminance( $bg ) < 0.5
+            ? wptw_color_blend( '#ffffff', $bg, 0.10 )
+            : wptw_color_blend( '#0f172a', $bg, 0.06 );
+        $c['color_header_bg'] = $head_bg;
+    }
+
+    $c['color_label'] = wptw_color_contrast( $c['color_label'], $head_bg ) >= 3.0 ? $c['color_label'] : wptw_secondary_on( $head_bg );
+    $c['color_rt']    = wptw_color_contrast( $c['color_rt'], $head_bg ) >= 3.0 ? $c['color_rt'] : wptw_secondary_on( $head_bg );
+
+    $c['color_link']       = wptw_color_contrast( $c['color_link'], $bg ) >= 4.5 ? $c['color_link'] : wptw_primary_on( $bg );
+    $c['color_link_hover'] = wptw_color_contrast( $c['color_link_hover'], $bg ) >= 5.0 ? $c['color_link_hover'] : wptw_primary_on( $bg );
+    $c['color_number']     = wptw_color_contrast( $c['color_number'], $bg ) >= 2.3 ? $c['color_number'] : wptw_color_blend( wptw_primary_on( $bg ), $bg, 0.48 );
+
+    if ( abs( wptw_color_luminance( $c['color_active_bg'] ) - wptw_color_luminance( $bg ) ) < 0.04 ) {
+        $c['color_active_bg'] = wptw_color_luminance( $bg ) < 0.5
+            ? wptw_color_blend( '#ffffff', $bg, 0.09 )
+            : wptw_color_blend( '#0f172a', $bg, 0.05 );
+    }
+    if ( min( wptw_color_contrast( $c['color_active_bar'], $bg ), wptw_color_contrast( $c['color_active_bar'], $head_bg ) ) < 2.4 ) {
+        $c['color_active_bar'] = $layout === 'brutalist'
+            ? ( wptw_color_luminance( $bg ) < 0.5 ? '#ffffff' : '#111827' )
+            : ( wptw_color_luminance( $bg ) < 0.5 ? '#d97706' : '#111827' );
+    }
+    if ( wptw_color_contrast( $c['color_rt_bar'], $bg ) < 2.4 ) {
+        $c['color_rt_bar'] = $c['color_active_bar'];
+    }
+
+    $c['color_toggle_fg'] = wptw_color_contrast( $c['color_toggle_fg'], $c['color_toggle_bg'] ) >= 4.5 ? $c['color_toggle_fg'] : wptw_primary_on( $c['color_toggle_bg'] );
+
+    return $c;
+}
+
+function wptw_primary_on( string $bg ): string {
+    return wptw_color_luminance( $bg ) < 0.5 ? '#ffffff' : '#0f172a';
+}
+
+function wptw_secondary_on( string $bg ): string {
+    return wptw_color_blend( wptw_primary_on( $bg ), $bg, 0.66 );
+}
+
+function wptw_color_rgb( string $hex ): array {
+    $hex = ltrim( trim( $hex ), '#' );
+    if ( strlen( $hex ) === 3 ) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+    if ( strlen( $hex ) !== 6 || preg_match( '/[^0-9a-f]/i', $hex ) ) {
+        $hex = 'ffffff';
+    }
+    return [
+        hexdec( substr( $hex, 0, 2 ) ),
+        hexdec( substr( $hex, 2, 2 ) ),
+        hexdec( substr( $hex, 4, 2 ) ),
+    ];
+}
+
+function wptw_color_luminance( string $hex ): float {
+    $rgb = array_map( static function ( $channel ) {
+        $v = $channel / 255;
+        return $v <= 0.03928 ? $v / 12.92 : ( ( $v + 0.055 ) / 1.055 ) ** 2.4;
+    }, wptw_color_rgb( $hex ) );
+
+    return ( 0.2126 * $rgb[0] ) + ( 0.7152 * $rgb[1] ) + ( 0.0722 * $rgb[2] );
+}
+
+function wptw_color_contrast( string $a, string $b ): float {
+    $l1 = wptw_color_luminance( $a ) + 0.05;
+    $l2 = wptw_color_luminance( $b ) + 0.05;
+    return max( $l1, $l2 ) / min( $l1, $l2 );
+}
+
+function wptw_color_blend( string $fg, string $bg, float $amount ): string {
+    $fg_rgb = wptw_color_rgb( $fg );
+    $bg_rgb = wptw_color_rgb( $bg );
+    $amount = max( 0, min( 1, $amount ) );
+    $out = [];
+    foreach ( [ 0, 1, 2 ] as $i ) {
+        $out[] = (int) round( ( $fg_rgb[ $i ] * $amount ) + ( $bg_rgb[ $i ] * ( 1 - $amount ) ) );
+    }
+    return sprintf( '#%02x%02x%02x', $out[0], $out[1], $out[2] );
+}
+
 /* ── Render page ──────────────────────────────────────────── */
 function wptw_render_settings_page() {
     if ( ! current_user_can( 'manage_options' ) ) return;
@@ -79,10 +178,13 @@ function wptw_render_settings_page() {
     $pts     = wptw_public_post_types();
     $presets = wptw_color_presets();
     $fonts   = wptw_available_fonts();
+    $layouts = wptw_toc_layouts();
+    $default_layout = wptw_defaults()['toc_layout'];
 
     $tabs = [
         'visibility' => [ 'label'=>'Visibility', 'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 3C4 3 1 7.5 1 7.5S4 12 7.5 12 14 7.5 14 7.5 11 3 7.5 3Z" stroke="currentColor" stroke-width="1.3"/><circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.3"/></svg>' ],
         'headings'   => [ 'label'=>'Headings',   'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 3v9M2 7.5h11M13 3v9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>' ],
+        'layouts'    => [ 'label'=>'Layouts',    'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="2" width="11" height="4" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="M3 9h9M3 11.5h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' ],
         'display'    => [ 'label'=>'Display',    'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="13" height="13" rx="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h7M4 7.5h5M4 10h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>' ],
         'colours'    => [ 'label'=>'Colours',    'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.3"/><circle cx="5" cy="6" r="1.2" fill="currentColor"/><circle cx="10" cy="6" r="1.2" fill="currentColor"/><circle cx="7.5" cy="10.2" r="1.2" fill="currentColor"/></svg>' ],
         'typography' => [ 'label'=>'Typography', 'svg'=>'<svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 3h11M7.5 3v9M5 12h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>' ],
@@ -95,7 +197,7 @@ function wptw_render_settings_page() {
                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="6" fill="#111"/><path d="M7 9h6M7 14h12M7 19h9" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
                 <div><span class="wptw-pname">TableWise</span><span class="wptw-pver">v<?php echo esc_html( WPTW_VERSION ); ?></span></div>
             </div>
-            <a href="https://cr8vstacks.com" target="_blank" class="wptw-by">by Cr8v Stacks ↗</a>
+            <a href="https://cr8vstacks.com" target="_blank" rel="noopener noreferrer" class="wptw-by">by Cr8v Stacks ↗</a>
         </header>
 
         <div class="wptw-layout">
@@ -109,6 +211,8 @@ function wptw_render_settings_page() {
 
             <form method="post" action="options.php" id="wptw-form">
                 <?php settings_fields( 'wptw_group' ); ?>
+                <div class="wptw-workbench">
+                <div class="wptw-editor">
 
                 <!-- ══ VISIBILITY ══ -->
                 <section class="wptw-panel" data-panel="visibility">
@@ -171,6 +275,29 @@ function wptw_render_settings_page() {
                 </section>
 
                 <!-- ══ DISPLAY ══ -->
+                <section class="wptw-panel" data-panel="layouts">
+                    <?php wptw_ph('Layouts','Choose the frontend TOC structure. All layouts still use the same colour, typography, display, and heading controls.'); ?>
+                    <div class="wptw-panel-shortcuts">
+                        <button type="button" class="wptw-jump" data-jump-tab="colours">Tune colours</button>
+                    </div>
+                    <div class="wptw-layout-grid">
+                        <?php foreach ( $layouts as $lid => $layout ) : ?>
+                        <?php $active_layout = array_key_exists( (string) $o['toc_layout'], $layouts ) ? $o['toc_layout'] : $default_layout; ?>
+                        <label class="wptw-layout-card <?php echo $active_layout === $lid ? 'on is-saved-active' : ''; ?>" data-layout-id="<?php echo esc_attr( $lid ); ?>">
+                            <input type="radio" name="<?php echo esc_attr( WPTW_OPTION ); ?>[toc_layout]" value="<?php echo esc_attr( $lid ); ?>" <?php checked( $active_layout, $lid ); ?>>
+                            <span class="wptw-card-badges">
+                                <span class="wptw-badge wptw-badge--active">Active</span>
+                            </span>
+                            <span class="wptw-layout-mini wptw-layout-mini--<?php echo esc_attr( $lid ); ?>">
+                                <span></span><span></span><span></span>
+                            </span>
+                            <strong><?php echo esc_html( $layout['label'] ); ?></strong>
+                            <small><?php echo esc_html( $layout['desc'] ); ?></small>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+
                 <section class="wptw-panel" data-panel="display">
                     <?php wptw_ph('Display','Behaviour, features, and interaction settings.'); ?>
                     <div class="wptw-fields">
@@ -254,12 +381,18 @@ function wptw_render_settings_page() {
                 <!-- ══ COLOURS ══ -->
                 <section class="wptw-panel" data-panel="colours">
                     <?php wptw_ph('Colours','All 16 colour controls. Presets cover every control with matched, readable combinations.'); ?>
+                    <div class="wptw-panel-shortcuts">
+                        <button type="button" class="wptw-jump" data-jump-tab="layouts">Choose layout</button>
+                    </div>
                     <div class="wptw-fields">
                         <div class="wptw-field">
                             <label class="wptw-label">Presets</label>
                             <div class="wptw-presets" id="wptw-presets">
                                 <?php foreach ( $presets as $pid => $p ) : ?>
-                                <button type="button" class="wptw-pbtn" data-preset="<?php echo esc_attr( $pid ); ?>"><?php echo esc_html( $p['emoji'] ); ?> <?php echo esc_html( $p['label'] ); ?></button>
+                                <button type="button" class="wptw-pbtn" data-preset="<?php echo esc_attr( $pid ); ?>">
+                                    <span><?php echo esc_html( $p['emoji'] ); ?> <?php echo esc_html( $p['label'] ); ?></span>
+                                    <span class="wptw-badge wptw-badge--active">Active</span>
+                                </button>
                                 <?php endforeach; ?>
                                 <button type="button" class="wptw-pbtn wptw-reset" data-preset="__reset">↩ Reset</button>
                             </div>
@@ -270,7 +403,7 @@ function wptw_render_settings_page() {
                             'Card'           =>['color_bg'=>'Background','color_border'=>'Border'],
                             'Header bar'     =>['color_header_bg'=>'Header background','color_label'=>'Title label text','color_rt'=>'Reading time text','color_rt_bar'=>'Progress bar fill','color_rt_bar_bg'=>'Progress bar track'],
                             'Toggle button'  =>['color_toggle_bg'=>'Button background','color_toggle_fg'=>'Button text / icon','color_toggle_border'=>'Button border'],
-                            'List items'     =>['color_link'=>'Link text','color_link_hover'=>'Link hover','color_active_bar'=>'Active — left bar','color_active_bg'=>'Active — background','color_number'=>'Section numbers'],
+                            'List items'     =>['color_link'=>'Link text','color_link_hover'=>'Link hover','color_active_bar'=>'Active / progress accent','color_active_bg'=>'Active background','color_number'=>'Section numbers'],
                             'Back-to-top'    =>['color_back_top_bg'=>'Button background','color_back_top_fg'=>'Button icon'],
                         ];
                         foreach ( $cgroups as $grp => $fields ) : ?>
@@ -376,14 +509,50 @@ function wptw_render_settings_page() {
                     <?php submit_button('Save settings','primary wptw-savebtn','submit',false); ?>
                     <span id="wptw-saved" class="wptw-saved">✓ Saved</span>
                 </div>
+                </div>
+
+                <aside class="wptw-preview" aria-label="Live table of contents preview">
+                    <div class="wptw-preview__bar">
+                        <span>Live preview</span>
+                        <button type="button" class="wptw-preview__toggle" id="wptw-preview-toggle">Desktop</button>
+                    </div>
+                    <div class="wptw-preview__canvas">
+                        <div class="wptw-toc wptw-preview-toc wptw-toc--layout-<?php echo esc_attr( array_key_exists( (string) $o['toc_layout'], $layouts ) ? $o['toc_layout'] : $default_layout ); ?>">
+                            <div class="wptw-toc__head">
+                                <div class="wptw-toc__head-left">
+                                    <span class="wptw-toc__label"><?php echo esc_html( $o['toc_title'] ); ?></span>
+                                    <span class="wptw-toc__rt">5 min read</span>
+                                </div>
+                                <button type="button" class="wptw-toc__toggle" aria-expanded="true">
+                                    <span class="wptw-toc__tog-text">Hide</span>
+                                    <svg class="wptw-toc__tog-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                            </div>
+                            <div class="wptw-toc__prog" role="presentation"><div class="wptw-toc__prog-fill" style="width:42%"></div></div>
+                            <div class="wptw-toc__body">
+                                <ol class="wptw-toc__list" role="list">
+                                    <li class="wptw-toc__item is-done" style="--i:0"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">1.</span><span class="wptw-toc__text">Getting started</span></a></li>
+                                    <li class="wptw-toc__item is-done wptw-toc__item--sub wptw-toc__item--d3" style="--i:1"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">1.1.</span><span class="wptw-toc__text">Setup checklist</span></a></li>
+                                    <li class="wptw-toc__item is-active" style="--i:2"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">2.</span><span class="wptw-toc__text">Design decisions</span></a></li>
+                                    <li class="wptw-toc__item wptw-toc__item--sub wptw-toc__item--d3" style="--i:3"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">2.1.</span><span class="wptw-toc__text">Responsive behavior</span></a></li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+                </div>
             </form>
         </div>
+        <footer class="wptw-admin-footer">
+            <span>TableWise <?php echo esc_html( WPTW_VERSION ); ?></span>
+            <span>Built by <a href="https://cr8vstacks.com" target="_blank" rel="noopener noreferrer">Cr8v Stacks</a></span>
+        </footer>
     </div>
 
     <style>
     /* ─── Admin UI ─────────────────────────────────────────── */
-    .wptw-wrap{max-width:920px;padding-bottom:80px;--a:#111;--b:#2271b1;--bd:#e2e2e2;--bg:#f7f7f7;--r:6px}
-    .wptw-ph{display:flex;align-items:center;justify-content:space-between;margin:18px 0 22px}
+    .wptw-wrap{max-width:1460px;padding-bottom:80px;--a:#111;--b:#2271b1;--bd:#e2e2e2;--bg:#f7f7f7;--r:6px}
+    .wptw-ph{display:flex;align-items:center;justify-content:space-between;margin:0 0 22px;padding:16px 18px;position:sticky;top:32px;z-index:30;background:#fff;border:1px solid var(--bd);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
     .wptw-logo{display:flex;align-items:center;gap:10px}
     .wptw-pname{font-size:20px;font-weight:700;color:#111;display:block;line-height:1.1}
     .wptw-pver{font-size:11px;color:#bbb;font-weight:400}
@@ -403,6 +572,9 @@ function wptw_render_settings_page() {
     .wptw-panel-header{margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid #eee}
     .wptw-panel-header h2{font-size:15px;font-weight:700;margin:0 0 3px;color:#111}
     .wptw-panel-header p{color:#888;font-size:12.5px;margin:0}
+    .wptw-panel-shortcuts{display:flex;justify-content:flex-end;margin:-8px 0 16px}
+    .wptw-jump{align-items:center;background:#fff;border:1px solid #dcdcde;border-radius:5px;color:#1d2327;cursor:pointer;display:inline-flex;font-size:12px;font-weight:600;gap:6px;padding:7px 10px}
+    .wptw-jump:hover{border-color:#111;color:#111}
     /* fields */
     .wptw-fields{display:flex;flex-direction:column;gap:18px}
     .wptw-field{display:flex;flex-direction:column;gap:0}
@@ -467,8 +639,10 @@ function wptw_render_settings_page() {
     .wptw-creset:hover{color:#c00}
     /* presets */
     .wptw-presets{display:flex;flex-wrap:wrap;gap:8px}
-    .wptw-pbtn{padding:6px 14px;background:#f5f5f5;border:1px solid #ddd;border-radius:20px;cursor:pointer;font-size:12px;transition:.14s;font-family:inherit}
+    .wptw-pbtn{align-items:center;display:inline-flex;gap:7px;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:20px;cursor:pointer;font-size:12px;transition:.14s;font-family:inherit}
     .wptw-pbtn:hover{background:#111;color:#fff;border-color:#111}
+    .wptw-pbtn.is-preview{border-color:#111;box-shadow:0 0 0 1px #111}
+    .wptw-pbtn.is-saved-active{background:#ecfdf5;border-color:#047857;color:#065f46}
     .wptw-reset:hover{background:#f5f5f5;color:#333;border-color:#bbb}
     /* sliders */
     .wptw-slrow{display:flex;align-items:center;gap:14px}
@@ -485,6 +659,60 @@ function wptw_render_settings_page() {
     .wptw-savebtn{font-size:13.5px!important;padding:8px 24px!important;height:auto!important}
     .wptw-saved{color:#2e7d32;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s}
     .wptw-saved.on{opacity:1}
+    .wptw-wrap{max-width:1460px}
+    .wptw-layout{align-items:stretch}
+    #wptw-form{flex:1;min-width:0}
+    .wptw-workbench{display:grid;grid-template-columns:minmax(0,1fr) 520px;min-height:680px}
+    .wptw-editor{min-width:0;border-right:1px solid var(--bd)}
+    .wptw-panel{padding:28px 32px}
+    .wptw-preview{background:#f6f7f7;padding:22px;position:sticky;top:40px;align-self:start;min-height:100%}
+    .wptw-preview__bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6b7280}
+    .wptw-preview__toggle{border:1px solid #dcdcde;background:#fff;border-radius:4px;color:#1d2327;cursor:pointer;font-size:11px;padding:4px 8px}
+    .wptw-preview__canvas{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:28px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);overflow:visible}
+    .wptw-preview__canvas.is-mobile{max-width:285px;margin:0 auto;padding:16px}
+    .wptw-layout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+    .wptw-layout-card{display:flex;flex-direction:column;gap:8px;border:1px solid #dcdcde;border-radius:8px;padding:14px;background:#fff;cursor:pointer;position:relative;transition:.15s border-color,.15s box-shadow,.15s transform}
+    .wptw-layout-card:hover{border-color:#111;transform:translateY(-1px)}
+    .wptw-layout-card.on,.wptw-layout-card:has(input:checked){border-color:#111;box-shadow:0 0 0 2px #111}
+    .wptw-layout-card input{position:absolute;opacity:0;pointer-events:none}
+    .wptw-layout-card strong{font-size:13px;color:#111}
+    .wptw-layout-card small{font-size:11.5px;line-height:1.45;color:#777}
+    .wptw-card-badges{display:flex;gap:5px;left:10px;position:absolute;top:10px;z-index:3}
+    .wptw-badge{border-radius:999px;display:none;font-size:9px;font-weight:800;letter-spacing:.05em;line-height:1;padding:4px 6px;text-transform:uppercase}
+    .wptw-badge--active{background:#047857;color:#ecfdf5}
+    .wptw-layout-card.is-saved-active .wptw-badge--active,.wptw-pbtn.is-saved-active .wptw-badge--active{display:inline-flex}
+    .wptw-layout-mini{height:82px;border:1px solid #eee;border-radius:6px;background:#fafafa;padding:11px;display:flex;flex-direction:column;gap:7px;position:relative;overflow:hidden}
+    .wptw-layout-mini span{display:block;height:8px;background:#111;border-radius:3px;opacity:.8}
+    .wptw-layout-mini span:first-child{width:70%;height:12px}
+    .wptw-layout-mini span:nth-child(2){width:88%;opacity:.42}
+    .wptw-layout-mini span:nth-child(3){width:58%;opacity:.28}
+    .wptw-layout-mini--manuscript{padding-left:22px;background:#111}
+    .wptw-layout-mini--manuscript::before{content:'';position:absolute;left:12px;top:0;right:0;height:3px;background:#d97706}
+    .wptw-layout-mini--manuscript::after{content:'';position:absolute;left:16px;top:18px;bottom:12px;border-left:1px solid rgba(255,255,255,.24)}
+    .wptw-layout-mini--manuscript span{background:#fff}
+    .wptw-layout-mini--default{background:#fafafa}
+    .wptw-layout-mini--default span:first-child{width:62%;height:12px}
+    .wptw-layout-mini--default span{background:#111}
+    .wptw-layout-mini--editorial{padding-left:42px;background:#fff}
+    .wptw-layout-mini--editorial::before{content:'';position:absolute;left:14px;top:17px;width:20px;height:20px;border-radius:8px;background:#ccfbf1}
+    .wptw-layout-mini--editorial::after{content:'';position:absolute;left:24px;top:43px;bottom:12px;border-left:1px solid #d7e4df}
+    .wptw-layout-mini--brutalist{background:#18181b;border:2px solid #050505;border-radius:0;box-shadow:none;overflow:visible}
+    .wptw-layout-mini--brutalist::after{content:'';position:absolute;inset:5px -6px -6px 5px;border:2px solid #111;background:transparent;z-index:0}
+    .wptw-layout-mini--brutalist span{position:relative;z-index:1}
+    .wptw-layout-mini--brutalist span{border-radius:0;background:#f8fafc}
+    .wptw-layout-mini--brutalist span:first-child{height:14px;width:100%}
+    .wptw-admin-footer{align-items:center;color:#7a7a7a;display:flex;font-size:12px;justify-content:space-between;margin:18px 2px 0}
+    .wptw-admin-footer a{color:#555;text-decoration:none}.wptw-admin-footer a:hover{color:#111}
+    @media (max-width:1100px){.wptw-workbench{grid-template-columns:1fr}.wptw-editor{border-right:0}.wptw-preview{position:relative;top:auto;border-top:1px solid var(--bd)}}@media (max-width:780px){.wptw-layout{display:block}.wptw-tabs{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--bd)}.wptw-tab{border-left:0;border-bottom:3px solid transparent;min-width:max-content}.wptw-tab[aria-selected="true"]{border-bottom-color:#111}.wptw-twofield{grid-template-columns:1fr}.wptw-panel{padding:22px}.wptw-stickyex{padding-left:0}}
+    </style>
+    <?php
+    if ( function_exists( 'wptw_render_toc_styles' ) ) {
+        wptw_render_toc_styles( $o, false, 'wptw-admin-preview-frontend-styles' );
+    }
+    ?>
+    <style id="wptw-admin-preview-frame">
+    .wptw-preview .wptw-preview-toc{margin:0!important;width:100%!important;max-width:none!important}
+    .wptw-preview__canvas .wptw-preview-toc{position:relative}
     </style>
     <?php
 }
@@ -508,8 +736,11 @@ function wptw_sf( string $key, string $label, $val, int $min, int $max ): void {
 /* ── Admin JS — pure vanilla, zero WP JS dependencies ──────── */
 function wptw_admin_js() {
     $presets_json  = wp_json_encode( array_map( fn($p) => $p['colors'], wptw_color_presets() ) );
-    $def_colors    = array_filter( wptw_defaults(), fn($k) => str_starts_with($k,'color_'), ARRAY_FILTER_USE_KEY );
+    $def_colors    = array_filter( wptw_defaults(), static function ( $k ) {
+        return strpos( (string) $k, 'color_' ) === 0;
+    }, ARRAY_FILTER_USE_KEY );
     $defaults_json = wp_json_encode( $def_colors );
+    $default_layout = wptw_defaults()['toc_layout'];
     ?>
     <script>
     /* WP TableWise settings — pure vanilla JS, no jQuery dependencies */
@@ -518,7 +749,105 @@ function wptw_admin_js() {
 
         var presets  = <?php echo $presets_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
         var defClrs  = <?php echo $defaults_json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+        var defaultLayout = <?php echo wp_json_encode( $default_layout ); ?>;
+        var layoutPresetColors = {
+            manuscript: {
+                default: {
+                    color_bg:'#0f172a', color_border:'#243044', color_header_bg:'#0b1120',
+                    color_label:'#d97706', color_rt:'#94a3b8', color_rt_bar:'#d97706', color_rt_bar_bg:'#243044',
+                    color_toggle_bg:'#f8fafc', color_toggle_fg:'#0f172a', color_toggle_border:'#f8fafc',
+                    color_link:'#cbd5e1', color_link_hover:'#ffffff', color_active_bar:'#d97706',
+                    color_active_bg:'#1e293b', color_number:'#d97706', color_back_top_bg:'#f8fafc', color_back_top_fg:'#0f172a'
+                },
+                light: {
+                    color_bg:'#ffffff', color_border:'#e5e7eb', color_header_bg:'#f8fafc',
+                    color_label:'#9a3412', color_rt:'#64748b', color_rt_bar:'#d97706', color_rt_bar_bg:'#e5e7eb',
+                    color_toggle_bg:'#111827', color_toggle_fg:'#ffffff', color_toggle_border:'#111827',
+                    color_link:'#334155', color_link_hover:'#0f172a', color_active_bar:'#d97706',
+                    color_active_bg:'#fff7ed', color_number:'#d97706', color_back_top_bg:'#111827', color_back_top_fg:'#ffffff'
+                },
+                dark: {
+                    color_bg:'#0f172a', color_border:'#243044', color_header_bg:'#0b1120',
+                    color_label:'#d97706', color_rt:'#94a3b8', color_rt_bar:'#d97706', color_rt_bar_bg:'#243044',
+                    color_toggle_bg:'#f8fafc', color_toggle_fg:'#0f172a', color_toggle_border:'#f8fafc',
+                    color_link:'#cbd5e1', color_link_hover:'#ffffff', color_active_bar:'#d97706',
+                    color_active_bg:'#1e293b', color_number:'#d97706', color_back_top_bg:'#f8fafc', color_back_top_fg:'#0f172a'
+                }
+            },
+            editorial: {
+                default: {
+                    color_bg:'#ffffff', color_border:'#d1d5db', color_header_bg:'#f8fafc',
+                    color_label:'#111827', color_rt:'#64748b', color_rt_bar:'#111827', color_rt_bar_bg:'#e5e7eb',
+                    color_toggle_bg:'#111827', color_toggle_fg:'#ffffff', color_toggle_border:'#111827',
+                    color_link:'#374151', color_link_hover:'#111827', color_active_bar:'#111827',
+                    color_active_bg:'#f3f4f6', color_number:'#94a3b8', color_back_top_bg:'#111827', color_back_top_fg:'#ffffff'
+                },
+                light: {
+                    color_bg:'#ffffff', color_border:'#e5e7eb', color_header_bg:'#f9fafb',
+                    color_label:'#111827', color_rt:'#6b7280', color_rt_bar:'#111827', color_rt_bar_bg:'#e5e7eb',
+                    color_toggle_bg:'#111827', color_toggle_fg:'#ffffff', color_toggle_border:'#111827',
+                    color_link:'#374151', color_link_hover:'#111827', color_active_bar:'#111827',
+                    color_active_bg:'#f3f4f6', color_number:'#9ca3af', color_back_top_bg:'#111827', color_back_top_fg:'#ffffff'
+                },
+                dark: {
+                    color_bg:'#111827', color_border:'#374151', color_header_bg:'#030712',
+                    color_label:'#f9fafb', color_rt:'#9ca3af', color_rt_bar:'#f9fafb', color_rt_bar_bg:'#374151',
+                    color_toggle_bg:'#f9fafb', color_toggle_fg:'#111827', color_toggle_border:'#f9fafb',
+                    color_link:'#e5e7eb', color_link_hover:'#ffffff', color_active_bar:'#f9fafb',
+                    color_active_bg:'#1f2937', color_number:'#9ca3af', color_back_top_bg:'#f9fafb', color_back_top_fg:'#111827'
+                }
+            },
+            brutalist: {
+                default: {
+                    color_bg:'#18181b', color_border:'#0a0a0a', color_header_bg:'#050505',
+                    color_label:'#f8fafc', color_rt:'#a1a1aa', color_rt_bar:'#f8fafc', color_rt_bar_bg:'#3f3f46',
+                    color_toggle_bg:'#f8fafc', color_toggle_fg:'#0a0a0a', color_toggle_border:'#f8fafc',
+                    color_link:'#e4e4e7', color_link_hover:'#ffffff', color_active_bar:'#f8fafc',
+                    color_active_bg:'#27272a', color_number:'#a1a1aa', color_back_top_bg:'#f8fafc', color_back_top_fg:'#0a0a0a'
+                },
+                light: {
+                    color_bg:'#ffffff', color_border:'#111111', color_header_bg:'#f4f4f5',
+                    color_label:'#111111', color_rt:'#52525b', color_rt_bar:'#111111', color_rt_bar_bg:'#d4d4d8',
+                    color_toggle_bg:'#111111', color_toggle_fg:'#ffffff', color_toggle_border:'#111111',
+                    color_link:'#27272a', color_link_hover:'#000000', color_active_bar:'#111111',
+                    color_active_bg:'#f4f4f5', color_number:'#71717a', color_back_top_bg:'#111111', color_back_top_fg:'#ffffff'
+                },
+                dark: {
+                    color_bg:'#09090b', color_border:'#000000', color_header_bg:'#000000',
+                    color_label:'#ffffff', color_rt:'#a1a1aa', color_rt_bar:'#ffffff', color_rt_bar_bg:'#27272a',
+                    color_toggle_bg:'#ffffff', color_toggle_fg:'#000000', color_toggle_border:'#ffffff',
+                    color_link:'#f4f4f5', color_link_hover:'#ffffff', color_active_bar:'#ffffff',
+                    color_active_bg:'#27272a', color_number:'#d4d4d8', color_back_top_bg:'#ffffff', color_back_top_fg:'#000000'
+                }
+            },
+            default: {
+                default: {
+                    color_bg:'#ffffff', color_border:'#e8e8e8', color_header_bg:'#fafafa',
+                    color_label:'#666666', color_rt:'#737373', color_rt_bar:'#111111', color_rt_bar_bg:'#e8e8e8',
+                    color_toggle_bg:'#111111', color_toggle_fg:'#ffffff', color_toggle_border:'#111111',
+                    color_link:'#333333', color_link_hover:'#000000', color_active_bar:'#111111',
+                    color_active_bg:'#f4f4f4', color_number:'#737373', color_back_top_bg:'#111111', color_back_top_fg:'#ffffff'
+                },
+                light: {
+                    color_bg:'#ffffff', color_border:'#e5e7eb', color_header_bg:'#f3f4f6',
+                    color_label:'#4b5563', color_rt:'#6b7280', color_rt_bar:'#111827', color_rt_bar_bg:'#d1d5db',
+                    color_toggle_bg:'#111827', color_toggle_fg:'#ffffff', color_toggle_border:'#111827',
+                    color_link:'#374151', color_link_hover:'#111827', color_active_bar:'#111827',
+                    color_active_bg:'#f9fafb', color_number:'#6b7280', color_back_top_bg:'#111827', color_back_top_fg:'#ffffff'
+                },
+                dark: {
+                    color_bg:'#1a1a1a', color_border:'#3a3a3a', color_header_bg:'#111111',
+                    color_label:'#e5e5e5', color_rt:'#a3a3a3', color_rt_bar:'#e5e5e5', color_rt_bar_bg:'#3a3a3a',
+                    color_toggle_bg:'#e5e5e5', color_toggle_fg:'#111111', color_toggle_border:'#e5e5e5',
+                    color_link:'#d4d4d4', color_link_hover:'#ffffff', color_active_bar:'#e5e5e5',
+                    color_active_bg:'#2a2a2a', color_number:'#a3a3a3', color_back_top_bg:'#e5e5e5', color_back_top_fg:'#111111'
+                }
+            }
+        };
         presets['__reset'] = defClrs;
+        var currentPreset = 'default';
+        var lastPreset = 'default';
+        var savedPreset = 'default';
 
         /* ── TABS ── */
         var tabs   = document.querySelectorAll('.wptw-tab');
@@ -534,6 +863,9 @@ function wptw_admin_js() {
         }
         tabs.forEach(function(t){
             t.addEventListener('click', function(){ activateTab(this.dataset.tab); });
+        });
+        document.querySelectorAll('[data-jump-tab]').forEach(function(btn){
+            btn.addEventListener('click', function(){ activateTab(this.dataset.jumpTab); });
         });
         var init; try{ init=localStorage.getItem('wptw_tab'); }catch(e){}
         activateTab(init||'visibility');
@@ -590,29 +922,33 @@ function wptw_admin_js() {
         document.querySelectorAll('.wptw-creset').forEach(function(btn){
             btn.addEventListener('click', function(){
                 var key = btn.dataset.key;
-                var def = btn.dataset.default;
+                var presetId = currentPreset && currentPreset !== 'custom' ? currentPreset : lastPreset || 'default';
+                var preset = presetId ? resolvedPreset(presetId) : null;
+                var def = preset && preset[key] ? preset[key] : btn.dataset.default;
                 var inp = document.querySelector('input.wptw-color[data-key="'+key+'"]');
                 if(inp){
                     inp.value = def;
                     var hex = inp.nextElementSibling;
                     if(hex) hex.textContent = def;
                 }
+                if(typeof updatePreview === 'function') updatePreview();
             });
         });
 
         /* ── Colour presets ── */
         document.querySelectorAll('.wptw-pbtn').forEach(function(btn){
             btn.addEventListener('click', function(){
-                var p = presets[btn.dataset.preset];
+                if(btn.dataset.preset !== '__reset'){
+                    currentPreset = btn.dataset.preset;
+                    lastPreset = currentPreset;
+                } else {
+                    currentPreset = currentPreset && currentPreset !== 'custom' ? currentPreset : lastPreset || 'default';
+                    lastPreset = currentPreset;
+                }
+                var p = resolvedPreset(btn.dataset.preset);
                 if(!p) return;
-                Object.keys(p).forEach(function(key){
-                    var val = p[key];
-                    var inp = document.querySelector('input.wptw-color[data-key="'+key+'"]');
-                    if(!inp) return;
-                    inp.value = val;
-                    var hex = inp.nextElementSibling;
-                    if(hex) hex.textContent = val;
-                });
+                applyColors(p);
+                if(typeof updatePreview === 'function') updatePreview();
             });
         });
 
@@ -632,6 +968,258 @@ function wptw_admin_js() {
             fontPrv.textContent='The quick brown fox — Aa Bb Cc 0123456789';
         }
         if(fontSel){ fontSel.addEventListener('change', function(){ showFontPreview(this.value); }); showFontPreview(fontSel.value); }
+
+        /* Live preview */
+        var form = document.getElementById('wptw-form');
+        var preview = document.querySelector('.wptw-preview-toc');
+        var previewCanvas = document.querySelector('.wptw-preview__canvas');
+        var previewMode = document.getElementById('wptw-preview-toggle');
+        var optionName = <?php echo wp_json_encode( WPTW_OPTION ); ?>;
+        var cssMap = {
+            color_bg:'--wptw-bg', color_border:'--wptw-border', color_header_bg:'--wptw-head-bg',
+            color_label:'--wptw-label-c', color_rt:'--wptw-rt-c', color_rt_bar:'--wptw-rtbar-fill',
+            color_rt_bar_bg:'--wptw-rtbar-bg', color_toggle_bg:'--wptw-tog-bg', color_toggle_fg:'--wptw-tog-fg',
+            color_toggle_border:'--wptw-tog-bdr', color_link:'--wptw-link', color_link_hover:'--wptw-link-hov',
+            color_active_bar:'--wptw-bar', color_active_bg:'--wptw-act-bg', color_number:'--wptw-num-c'
+        };
+        function field(key){ return form ? form.querySelector('[name="'+optionName+'['+key+']"]:not([type="hidden"])') : null; }
+        function checked(key){ var el = field(key); return !!(el && el.checked); }
+        function value(key, fallback){
+            var checkedRadio = form ? form.querySelector('[name="'+optionName+'['+key+']"][type="radio"]:checked') : null;
+            if(checkedRadio) return checkedRadio.value;
+            var el = field(key);
+            return el ? el.value : fallback;
+        }
+        function activeLayout(){
+            return value('toc_layout', defaultLayout || 'manuscript') || 'manuscript';
+        }
+        function resolvedPreset(presetId){
+            var id = presetId === '__reset' ? (currentPreset && currentPreset !== 'custom' ? currentPreset : lastPreset || 'default') : presetId;
+            var layout = activeLayout();
+            var layoutPresets = layoutPresetColors[layout] || layoutPresetColors.default || {};
+            if(id === 'default') return layoutPresets.default || presets.default || defClrs;
+            if(id === 'dark' && layoutPresets.dark) return layoutPresets.dark;
+            return presets[id] || layoutPresets.default || presets.default || defClrs;
+        }
+        function colorsMatch(colors){
+            return Object.keys(cssMap).every(function(key){
+                var el = document.querySelector('input.wptw-color[data-key="'+key+'"]');
+                return el && colors && colors[key] && el.value.toLowerCase() === colors[key].toLowerCase();
+            });
+        }
+        function inferSavedPreset(){
+            var ids = ['default','light','dark','ocean','forest','rose'];
+            for(var i = 0; i < ids.length; i++){
+                if(colorsMatch(resolvedPreset(ids[i]))) return ids[i];
+            }
+            return 'default';
+        }
+        function fontStack(font){
+            if(!font) return 'inherit';
+            if(font === 'system') return "system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif";
+            return "'" + font.replace(/'/g,'') + "',system-ui,sans-serif";
+        }
+        function applyColors(colors){
+            Object.keys(colors || {}).forEach(function(key){
+                var inp = document.querySelector('input.wptw-color[data-key="'+key+'"]');
+                if(!inp) return;
+                inp.value = colors[key];
+                var hex = inp.nextElementSibling;
+                if(hex) hex.textContent = colors[key];
+            });
+        }
+        function rgb(hex){
+            hex = String(hex || '').replace('#','').trim();
+            if(hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            if(!/^[0-9a-f]{6}$/i.test(hex)) hex = 'ffffff';
+            return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+        }
+        function lum(hex){
+            return rgb(hex).map(function(ch){
+                var v = ch / 255;
+                return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            }).reduce(function(sum, v, i){ return sum + v * [0.2126,0.7152,0.0722][i]; }, 0);
+        }
+        function contrast(a,b){
+            var l1 = lum(a) + 0.05, l2 = lum(b) + 0.05;
+            return Math.max(l1,l2) / Math.min(l1,l2);
+        }
+        function blend(fg,bg,amt){
+            var f = rgb(fg), b = rgb(bg);
+            return '#' + f.map(function(v,i){
+                var n = Math.round((v * amt) + (b[i] * (1 - amt))).toString(16);
+                return n.length === 1 ? '0' + n : n;
+            }).join('');
+        }
+        function primaryOn(bg){ return lum(bg) < 0.5 ? '#ffffff' : '#0f172a'; }
+        function secondaryOn(bg){ return blend(primaryOn(bg), bg, 0.66); }
+        function normalizedColors(){
+            var c = {};
+            Object.keys(cssMap).forEach(function(key){ c[key] = value(key, ''); });
+            var bg = c.color_bg || '#ffffff', head = c.color_header_bg || '#fafaf9';
+            if(Math.abs(lum(bg) - lum(head)) < 0.06){
+                head = lum(bg) < 0.5 ? blend('#ffffff', bg, 0.10) : blend('#0f172a', bg, 0.06);
+                c.color_header_bg = head;
+            }
+            if(contrast(c.color_label, head) < 3) c.color_label = secondaryOn(head);
+            if(contrast(c.color_rt, head) < 3) c.color_rt = secondaryOn(head);
+            if(contrast(c.color_link, bg) < 4.5) c.color_link = primaryOn(bg);
+            if(contrast(c.color_link_hover, bg) < 5) c.color_link_hover = primaryOn(bg);
+            if(contrast(c.color_number, bg) < 2.3) c.color_number = blend(primaryOn(bg), bg, 0.48);
+            if(Math.abs(lum(c.color_active_bg) - lum(bg)) < 0.04){
+                c.color_active_bg = lum(bg) < 0.5 ? blend('#ffffff', bg, 0.09) : blend('#0f172a', bg, 0.05);
+            }
+            if(Math.min(contrast(c.color_active_bar, bg), contrast(c.color_active_bar, head)) < 2.4){
+                c.color_active_bar = activeLayout() === 'brutalist'
+                    ? (lum(bg) < 0.5 ? '#ffffff' : '#111827')
+                    : (lum(bg) < 0.5 ? '#d97706' : '#111827');
+            }
+            if(contrast(c.color_rt_bar, bg) < 2.4){
+                c.color_rt_bar = c.color_active_bar;
+            }
+            if(contrast(c.color_toggle_fg, c.color_toggle_bg) < 4.5) c.color_toggle_fg = primaryOn(c.color_toggle_bg);
+            return c;
+        }
+        function updateLayoutCards(){
+            document.querySelectorAll('.wptw-layout-card').forEach(function(card){
+                var input = card.querySelector('input');
+                card.classList.toggle('on', !!(input && input.checked));
+            });
+        }
+        function updatePresetButtons(){
+            document.querySelectorAll('.wptw-pbtn[data-preset]').forEach(function(btn){
+                var previewId = currentPreset && currentPreset !== 'custom' ? currentPreset : lastPreset || 'default';
+                btn.classList.toggle('is-saved-active', btn.dataset.preset !== '__reset' && btn.dataset.preset === savedPreset);
+                btn.classList.toggle('is-preview', btn.dataset.preset !== '__reset' && btn.dataset.preset === previewId);
+            });
+        }
+        var previewLayout = '';
+        function previewToggle(){
+            return '<button type="button" class="wptw-toc__toggle" aria-expanded="true"><span class="wptw-toc__tog-text">Hide</span><svg class="wptw-toc__tog-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 4.5L6 8.5L10 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+        }
+        function renderPreviewMarkup(layout){
+            if(!preview || previewLayout === layout) return;
+            previewLayout = layout;
+            if(layout === 'manuscript'){
+                preview.innerHTML =
+                    '<div class="toc-manuscript-eyebrow"><span class="wptw-toc__label"></span><span class="toc-ms-actions"><span class="wptw-toc__rt">5 min read</span>'+previewToggle()+'</span></div>'+
+                    '<div class="wptw-toc__body"><ol class="wptw-toc__list toc-manuscript-list" role="list">'+
+                    '<li class="wptw-toc__item is-done toc-ms-item"><span class="toc-ms-node"><span class="toc-ms-node-inner"></span></span><span class="toc-ms-content"><span class="wptw-toc__num toc-ms-roman">I</span><a class="wptw-toc__link toc-ms-main" href="#"><span class="wptw-toc__text toc-ms-title">Preface</span></a></span></li>'+
+                    '<li class="wptw-toc__item is-done toc-ms-item"><span class="toc-ms-node"><span class="toc-ms-node-inner"></span></span><span class="toc-ms-content"><span class="wptw-toc__num toc-ms-roman">II</span><a class="wptw-toc__link toc-ms-main" href="#"><span class="wptw-toc__text toc-ms-title">Origins and context</span></a><span class="toc-ms-sub"><a class="wptw-toc__link toc-ms-sub-link" href="#">The founding years</a><a class="wptw-toc__link toc-ms-sub-link" href="#">Key influences</a></span></span></li>'+
+                    '<li class="wptw-toc__item is-active toc-ms-item"><span class="toc-ms-node"><span class="toc-ms-node-inner"></span></span><span class="toc-ms-content"><span class="wptw-toc__num toc-ms-roman">III</span><a class="wptw-toc__link toc-ms-main" href="#"><span class="wptw-toc__text toc-ms-title">A theory of everything</span></a><span class="toc-ms-sub"><a class="wptw-toc__link toc-ms-sub-link" href="#">Framework overview</a><a class="wptw-toc__link toc-ms-sub-link" href="#">Core propositions</a></span></span></li>'+
+                    '<li class="wptw-toc__item toc-ms-item"><span class="toc-ms-node"><span class="toc-ms-node-inner"></span></span><span class="toc-ms-content"><span class="wptw-toc__num toc-ms-roman">IV</span><a class="wptw-toc__link toc-ms-main" href="#"><span class="wptw-toc__text toc-ms-title">Evidence and proof</span></a></span></li>'+
+                    '</ol></div><div class="toc-ms-footer"><span class="toc-ms-footer-label">Progress</span><div class="wptw-toc__prog toc-ms-track" role="presentation"><div class="wptw-toc__prog-fill toc-ms-track-fill" style="width:42%"></div></div></div>';
+            } else if(layout === 'brutalist'){
+                preview.innerHTML =
+                    '<div class="wptw-toc__head toc-brut-header"><div class="wptw-toc__head-left"><span class="wptw-toc__label toc-brut-title"></span><span class="wptw-toc__rt">5 min read</span></div><div class="wptw-toc__actions toc-brut-actions">'+previewToggle()+'</div></div>'+
+                    '<div class="wptw-toc__body"><ol class="wptw-toc__list" role="list">'+
+                    '<li class="wptw-toc__item is-done toc-brut-item"><span class="toc-brut-row"><span class="toc-brut-step"><span class="wptw-toc__num toc-brut-num">1</span></span><span class="toc-brut-body"><a class="wptw-toc__link toc-brut-main" href="#"><span class="wptw-toc__text toc-brut-name">Introduction</span></a></span><span class="toc-brut-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span></li>'+
+                    '<li class="wptw-toc__item is-done toc-brut-item"><span class="toc-brut-row"><span class="toc-brut-step"><span class="wptw-toc__num toc-brut-num">2</span></span><span class="toc-brut-body"><a class="wptw-toc__link toc-brut-main" href="#"><span class="wptw-toc__text toc-brut-name">Background and theory</span></a><span class="toc-brut-subs"><a class="wptw-toc__link toc-brut-sub-link" href="#">Historical context</a><a class="wptw-toc__link toc-brut-sub-link" href="#">Key frameworks</a></span></span><span class="toc-brut-check"><svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span></li>'+
+                    '<li class="wptw-toc__item is-active toc-brut-item"><span class="toc-brut-row"><span class="toc-brut-step"><span class="wptw-toc__num toc-brut-num">3</span></span><span class="toc-brut-body"><a class="wptw-toc__link toc-brut-main" href="#"><span class="wptw-toc__text toc-brut-name">Methodology</span></a><span class="toc-brut-subs"><a class="wptw-toc__link toc-brut-sub-link" href="#">Research design</a><a class="wptw-toc__link toc-brut-sub-link" href="#">Data collection</a></span><span class="toc-brut-pill">Reading now</span></span><span class="toc-brut-check"></span></span></li>'+
+                    '<li class="wptw-toc__item toc-brut-item"><span class="toc-brut-row"><span class="toc-brut-step"><span class="wptw-toc__num toc-brut-num">4</span></span><span class="toc-brut-body"><a class="wptw-toc__link toc-brut-main" href="#"><span class="wptw-toc__text toc-brut-name">Results</span></a></span><span class="toc-brut-check"></span></span></li>'+
+                    '</ol></div><div class="wptw-toc__prog toc-brut-progress" role="presentation"><div class="wptw-toc__prog-fill toc-brut-progress-fill" style="width:42%"></div></div>';
+            } else if(layout === 'default') {
+                preview.innerHTML =
+                    '<div class="wptw-toc__head"><div class="wptw-toc__head-left"><span class="wptw-toc__label"></span><span class="wptw-toc__rt">5 min read</span></div>'+previewToggle()+'</div>'+
+                    '<div class="wptw-toc__prog" role="presentation"><div class="wptw-toc__prog-fill" style="width:42%"></div></div>'+
+                    '<div class="wptw-toc__body"><ol class="wptw-toc__list" role="list">'+
+                    '<li class="wptw-toc__item is-done"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">1.</span><span class="wptw-toc__text">Getting started</span></a></li>'+
+                    '<li class="wptw-toc__item is-done wptw-toc__item--sub wptw-toc__item--d3"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">1.1.</span><span class="wptw-toc__text">Setup checklist</span></a></li>'+
+                    '<li class="wptw-toc__item is-active"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">2.</span><span class="wptw-toc__text">Design decisions</span></a></li>'+
+                    '<li class="wptw-toc__item wptw-toc__item--sub wptw-toc__item--d3"><a class="wptw-toc__link" href="#"><span class="wptw-toc__num">2.1.</span><span class="wptw-toc__text">Responsive behavior</span></a></li>'+
+                    '</ol></div>';
+            } else {
+                preview.innerHTML =
+                    '<div class="wptw-toc__head toc-ed-header"><div class="wptw-toc__head-left toc-ed-header-left"><span class="toc-ed-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h8M2 12h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span class="wptw-toc__label toc-ed-label"></span></div><div class="wptw-toc__actions toc-ed-actions"><span class="toc-ed-badge">4 sections</span><span class="wptw-toc__rt">5 min read</span>'+previewToggle()+'</div></div>'+
+                    '<div class="wptw-toc__body toc-ed-body"><ol class="wptw-toc__list" role="list">'+
+                    '<li class="wptw-toc__item is-done toc-ed-item"><span class="toc-ed-gutter"><span class="toc-ed-dot">&#10003;</span></span><span class="toc-ed-row"><a class="wptw-toc__link toc-ed-main" href="#"><span class="wptw-toc__text toc-ed-title">Overview</span></a><span class="toc-ed-meta"><span class="toc-ed-mins">2 min</span></span></span></li>'+
+                    '<li class="wptw-toc__item is-done toc-ed-item"><span class="toc-ed-gutter"><span class="toc-ed-dot">&#10003;</span></span><span class="toc-ed-row"><a class="wptw-toc__link toc-ed-main" href="#"><span class="wptw-toc__text toc-ed-title">Prerequisites</span></a><span class="toc-ed-meta"><span class="toc-ed-mins">3 min</span></span></span></li>'+
+                    '<li class="wptw-toc__item is-active toc-ed-item"><span class="toc-ed-gutter"><span class="toc-ed-dot">3</span></span><span class="toc-ed-row"><a class="wptw-toc__link toc-ed-main" href="#"><span class="wptw-toc__text toc-ed-title">Installation</span></a><span class="toc-ed-meta"><span class="toc-ed-mins">5 min</span></span><span class="toc-ed-sub"><a class="wptw-toc__link toc-ed-sub-link" href="#">Package setup</a><a class="wptw-toc__link toc-ed-sub-link" href="#">Environment variables</a><a class="wptw-toc__link toc-ed-sub-link" href="#">Verify your install</a></span></span></li>'+
+                    '<li class="wptw-toc__item toc-ed-item"><span class="toc-ed-gutter"><span class="toc-ed-dot">4</span></span><span class="toc-ed-row"><a class="wptw-toc__link toc-ed-main" href="#"><span class="wptw-toc__text toc-ed-title">Configuration</span></a><span class="toc-ed-meta"><span class="toc-ed-mins">4 min</span></span></span></li>'+
+                    '</ol></div><div class="toc-ed-footer"><div class="wptw-toc__prog toc-ed-progress" role="presentation"><div class="wptw-toc__prog-fill toc-ed-progress-fill" style="width:42%"></div></div><span class="toc-ed-progress-label">42% done</span></div>';
+            }
+        }
+        function syncPreviewState(){
+            if(!preview) return;
+            var items = Array.prototype.slice.call(preview.querySelectorAll('.wptw-toc__item'));
+            var activeIndex = items.findIndex(function(item){ return item.classList.contains('is-active'); });
+            items.forEach(function(item, idx){
+                item.classList.toggle('is-done', activeIndex > -1 && idx < activeIndex);
+            });
+            if(preview.classList.contains('wptw-toc--layout-editorial')){
+                preview.querySelectorAll('.toc-ed-dot').forEach(function(dot, idx){
+                    dot.textContent = idx < activeIndex ? '\u2713' : String(idx + 1);
+                });
+            }
+            var edLabel = preview.querySelector('.toc-ed-progress-label');
+            if(edLabel) edLabel.textContent = '42% done';
+        }
+        function updatePreview(){
+            if(!preview) return;
+            var colors = normalizedColors();
+            Object.keys(cssMap).forEach(function(key){ preview.style.setProperty(cssMap[key], colors[key] || value(key, '')); });
+            preview.style.setProperty('--wptw-radius', value('border_radius', 4) + 'px');
+            preview.style.setProperty('--wptw-label-sz', value('font_size_label', 10) + 'px');
+            preview.style.setProperty('--wptw-label-ls', (parseInt(value('letter_spacing_label', 13), 10) / 100) + 'em');
+            preview.style.setProperty('--wptw-label-tt', value('text_transform_label', 'uppercase'));
+            preview.style.setProperty('--wptw-rt-sz', value('font_size_rt', 10) + 'px');
+            preview.style.setProperty('--wptw-num-sz', value('font_size_num', 11) + 'px');
+            preview.style.setProperty('--wptw-flink', value('font_size_link', 14) + 'px');
+            preview.style.setProperty('--wptw-fsub', value('font_size_sub', 13) + 'px');
+            preview.style.setProperty('--wptw-font', fontStack(value('font_family', 'system')));
+            var title = preview.querySelector('.wptw-toc__label');
+            if(title) title.textContent = value('toc_title', 'Contents') || 'Contents';
+            var layout = value('toc_layout', defaultLayout || 'manuscript');
+            preview.className = preview.className.replace(/\bwptw-toc--layout-[a-z0-9_-]+/g, '').trim();
+            preview.classList.add('wptw-toc--layout-' + layout);
+            renderPreviewMarkup(layout);
+            syncPreviewState();
+            title = preview.querySelector('.wptw-toc__label');
+            if(title) title.textContent = value('toc_title', 'Contents') || 'Contents';
+            updateLayoutCards();
+            updatePresetButtons();
+            preview.querySelectorAll('.wptw-toc__num').forEach(function(num){ num.style.display = checked('show_numbers') ? '' : 'none'; });
+            var rt = preview.querySelector('.wptw-toc__rt');
+            if(rt) rt.style.display = checked('reading_time') ? '' : 'none';
+            preview.querySelectorAll('.wptw-toc__prog,.toc-ms-footer,.toc-ed-footer').forEach(function(prog){
+                prog.style.display = checked('reading_progress') ? '' : 'none';
+            });
+            var isOpen = value('default_state', 'open') !== 'closed';
+            var list = preview.querySelector('.wptw-toc__list');
+            var toggle = preview.querySelector('.wptw-toc__toggle');
+            var ttext = preview.querySelector('.wptw-toc__tog-text');
+            if(list) list.style.display = isOpen ? '' : 'none';
+            if(toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            if(ttext) ttext.textContent = isOpen ? 'Hide' : 'Show';
+        }
+        if(form){
+            form.addEventListener('input', function(e){
+                if(e.target && e.target.classList && e.target.classList.contains('wptw-color')){
+                    currentPreset = 'custom';
+                }
+                updatePreview();
+            });
+            form.addEventListener('change', function(e){
+                if(e.target && e.target.name === optionName + '[toc_layout]'){
+                    currentPreset = currentPreset && currentPreset !== 'custom' ? currentPreset : lastPreset || 'default';
+                    lastPreset = currentPreset;
+                    applyColors(resolvedPreset(currentPreset));
+                } else if(e.target && e.target.classList && e.target.classList.contains('wptw-color')){
+                    currentPreset = 'custom';
+                }
+                updatePreview();
+            });
+        }
+        if(previewMode && previewCanvas){
+            previewMode.addEventListener('click', function(){
+                var mobile = previewCanvas.classList.toggle('is-mobile');
+                previewMode.textContent = mobile ? 'Mobile' : 'Desktop';
+            });
+        }
+        savedPreset = inferSavedPreset();
+        currentPreset = savedPreset;
+        lastPreset = savedPreset;
+        updatePreview();
 
         /* ── Copy shortcode ── */
         document.querySelectorAll('.wptw-copybtn').forEach(function(btn){

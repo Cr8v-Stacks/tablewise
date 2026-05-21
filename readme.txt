@@ -4,15 +4,17 @@ Tags: table of contents, toc, navigation, reading time, sticky
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Plugin URI: https://github.com/Cr8v-Stacks/Tablewise
+Support: cr8vstacks@gmail.com
 
 Customisable Table of Contents for posts. Features sticky header, active tracking, reading time, color presets, and per-post control.
 
 == Description ==
 
-WP TableWise automatically generates a beautiful, accessible Table of Contents for your WordPress posts and pages. Every aspect is fully controllable — no coding required.
+TableWise automatically generates a beautiful, accessible Table of Contents for your WordPress posts and pages. Every aspect is fully controllable — no coding required.
 
 **Key Features**
 
@@ -37,7 +39,7 @@ WP TableWise automatically generates a beautiful, accessible Table of Contents f
 
 = Colour Control =
 * 13 individually-adjustable colour settings
-* 5 built-in colour presets: Light, Dark, Ocean, Forest, Rose
+* 6 built-in colour presets: Default, Light, Dark, Ocean, Forest, Rose
 * One-click preset application in the settings panel
 
 = Per-Post Control =
@@ -58,7 +60,7 @@ WP TableWise automatically generates a beautiful, accessible Table of Contents f
 
 1. Upload the `tablewise` folder to `/wp-content/plugins/`
 2. Activate the plugin through the **Plugins** menu in WordPress
-3. Go to **Settings → WP TableWise** to configure
+3. Go to **Settings → TableWise** to configure
 4. Optionally override settings per post via the post editor sidebar or Quick Edit
 
 == Shortcode ==
@@ -71,18 +73,52 @@ Use `[wptw_toc]` anywhere in your content when Position is set to "Manual — sh
 No. The TOC only appears if the post type is enabled in Settings, the post meets the minimum heading count, the post ID is not in the exclude list, and TOC is not disabled for that specific post.
 
 = How do I make the TOC hidden by default? =
-Go to **Settings → WP TableWise → Display** and set "Default TOC state" to "Closed". You can also override this per post from the editor or Quick Edit.
+Go to **Settings → TableWise → Display** and set "Default TOC state" to "Closed". You can also override this per post from the editor or Quick Edit.
 
 = How does the sticky header work? =
 When enabled, the TOC header (containing the title, reading time, and toggle button) uses CSS `position: sticky` to remain visible as the user scrolls through the list. The list itself scrolls normally. Set the "Sticky top offset" to the height of your site's fixed header so they don't overlap.
 
 = Can I change the TOC title per post? =
-Yes. Open any post in the editor and use the WP TableWise sidebar panel (Gutenberg) or meta box (Classic Editor) to set a custom title for that post.
+Yes. Open any post in the editor and use the TableWise sidebar panel (Gutenberg) or meta box (Classic Editor) to set a custom title for that post.
 
 = What CSS selector do I use for custom styles? =
 Use `.wptw-toc` as your root selector in the Custom CSS field. All internal elements are prefixed `.wptw-toc__*`.
 
 == Changelog ==
+
+= 1.3.0 =
+* Added selectable TOC layouts: Minimalist, Manuscript, Soft Editorial, and Brutalist
+* Made Manuscript the default layout
+* Added saved Active badges for layouts and colour presets
+* Redesigned the settings dashboard with a wider live preview and dedicated Layouts tab
+* Added live preview updates for layout, colour, typography, display, progress, and visibility controls
+* Restored the original TOC as the Minimalist layout option
+* Reworked layouts to render H2 entries as primary sections and H3-H6 entries as depth-aware child links
+* Tightened layout and colour preset compatibility so header and body backgrounds stay visually distinct
+* Updated Brutalist and Editorial header colour handling to respect preset background rules
+* Reworked admin live preview overrides so preview layout styling tracks the frontend more closely
+* Replaced the duplicated admin preview layout stylesheet with the same TOC stylesheet used on the frontend
+* Disabled stale preview-only layout rules that were preventing non-Minimalist previews from matching frontend output
+* Disabled old global admin layout selectors so preview headers and bodies are styled only by the shared frontend stylesheet
+* Synced admin preview read/active state handling with the frontend state classes for layout-specific body styling
+* Consolidated Manuscript header and body styling into a final shared stylesheet block used by frontend and admin preview
+* Reworked Manuscript to more closely follow the sample mockup: mono eyebrow header, dark editorial body, serif titles, subdued read states, and amber progress
+* Fixed Manuscript timeline alignment so the vertical line runs through the center of the circle nodes
+* Simplified Manuscript header controls to match the sample mockup's single-eyebrow header treatment
+* Rebuilt Manuscript markup to match the sample structure instead of forcing the generic TOC header/list wrappers to imitate it
+* Fixed a PHP 7.4 compatibility issue that could stop the admin live preview script from loading
+* Matched layout-specific reading progress indicators across frontend, sticky header, and admin preview
+* Improved progress indicator contrast for dark headers and dark layout backgrounds
+* Improved Soft Editorial completed-state numbering so only read items show checkmarks
+* Fixed duplicate Manuscript markers and refined Brutalist spacing, active state, and offset border treatment
+* Removed the Minimalist left-accent active-row treatment
+* Hardened TOC text, link, list, and button styles against theme defaults
+* Restored legacy colour preset behavior while preserving layout-native Default and Dark variants
+* Fixed Sticky TOC support for Manuscript and confirmed Sticky top offset applies to all layouts
+* Restyled Hide/Show buttons per layout
+* Strengthened light-preset borders and layout frame contrast
+* Added sticky settings-page header, admin footer, and cross-links between Layouts and Colours
+* Removed WordPress footer attribution from the TableWise settings screen
 
 = 1.2.0 =
 * Improved sticky header logic for better viewport tracking
