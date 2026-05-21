@@ -10,79 +10,136 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Plugin URI: https://github.com/Cr8v-Stacks/Tablewise
 Support: cr8vstacks@gmail.com
 
-Customisable Table of Contents for posts. Features sticky header, active tracking, reading time, color presets, and per-post control.
+Customisable Table of Contents with layouts, live preview, active tracking, reading time, color presets, sticky headers, and per-post controls.
 
 == Description ==
 
-TableWise automatically generates a beautiful, accessible Table of Contents for your WordPress posts and pages. Every aspect is fully controllable — no coding required.
+TableWise automatically generates a polished, accessible Table of Contents for WordPress posts and pages. It gives site owners a complete TOC design system: multiple frontend layouts, live dashboard preview, layout-aware color presets, typography controls, reading progress, sticky behavior, and per-post overrides.
 
-**Key Features**
+The plugin is built for real publishing workflows. You can keep the original clean card design, switch to a dark editorial manuscript layout, use a soft editorial card, or choose a bold brutalist TOC. Each layout includes its own header, body, child-heading treatment, progress styling, and Hide/Show button style.
 
-= Display & Behaviour =
-* Auto-generates TOC from H2–H6 headings (configurable per site)
-* Configurable placement: before first heading, after first paragraph, or manual via shortcode
-* Default open or closed state — overridable per post
-* Smooth scroll with configurable offset for sticky site headers
-* Active-section highlighting using the performant IntersectionObserver API
-* Animated expand/collapse with proper ARIA attributes (accessible)
-* Optional hierarchical section numbering (1. / 1.1. / 2.)
+= Layouts =
 
-= Sticky Header =
-* TOC header (title + reading time + toggle) sticks to the viewport as the page scrolls
-* Configurable top offset to clear your site's fixed navigation
-* Adds a subtle drop shadow when actively stuck — subtle and clean
+* Manuscript: dark editorial layout with chapter-style timeline markers, amber progress, right-aligned reading time, and depth-aware child heading treatment.
+* Soft Editorial: clean editorial card with guided sections, completed-state checkmarks, dark/soft-dark typography, and nested child rows.
+* Brutalist: bold typographic layout with dark body, darker header, offset border extension, squared controls, high-contrast active rows, and nested child styling.
+* Minimalist: the original clean light card layout for users who prefer the classic TableWise look.
 
-= Reading Time =
-* Estimated reading time displayed in the TOC header (e.g. "6 min read")
-* Configurable words-per-minute rate to match your audience
-* Can be shown/hidden globally or per post
+= Dashboard And Live Preview =
 
-= Colour Control =
-* 13 individually-adjustable colour settings
-* 6 built-in colour presets: Default, Light, Dark, Ocean, Forest, Rose
-* One-click preset application in the settings panel
+* Redesigned settings dashboard with Visibility, Headings, Layouts, Display, Colours, Typography, and Advanced tabs.
+* Wider live preview that uses the same frontend stylesheet as the public TOC.
+* Desktop/mobile preview toggle.
+* Sticky dashboard header for easier editing.
+* Saved Active badges for the current layout and color preset.
+* Shortcut links between Layouts and Colours.
+* Custom TableWise admin footer on the settings screen.
+
+= Display And Behaviour =
+
+* Auto-generates a TOC from selected heading levels, from H2 through H6.
+* Supports public post types, minimum heading count, excluded post IDs, and custom anchor prefixes.
+* Preserves existing heading IDs when possible and generates anchors for headings that need them.
+* Configurable placement: before first heading, after first paragraph, or manual via shortcode.
+* Default open or closed state, with per-post override support.
+* Smooth scroll with configurable offset for sticky site headers.
+* Active-section highlighting using the IntersectionObserver API.
+* Animated expand/collapse with accessible ARIA attributes.
+* Optional hierarchical section numbering.
+* Optional back-to-top button.
+
+= Reading Experience =
+
+* Estimated reading time displayed in the TOC header.
+* Configurable words-per-minute rate.
+* Scroll reading progress indicator that matches the active layout.
+* Read/done states for sections the reader has passed.
+* Sticky TOC header with configurable top offset for fixed site navigation.
+* Layout-specific Hide/Show controls.
+
+= Design Controls =
+
+* Six color presets: Default, Light, Dark, Ocean, Forest, and Rose.
+* Default preset restores each layout's native colors instead of forcing every layout into one shared palette.
+* Layout-aware Dark preset so dark mode fits each layout's design.
+* Seventeen color controls covering card, border, header, label, reading time, progress, toggle button, links, active state, numbers, and back-to-top button.
+* Contrast normalization on save and in preview to reduce text/background clashes.
+* Typography controls for font family, link text, child text, label text, reading time, numbers, label letter spacing, label transform, and border radius.
+* Font options include system fonts plus Inter, DM Sans, Lato, Nunito, Open Sans, Poppins, Raleway, Roboto, Source Sans 3, Work Sans, Playfair Display, Merriweather, DM Mono, Fira Mono, and JetBrains Mono.
+* Custom CSS field for full theme-specific override control.
 
 = Per-Post Control =
-* Classic Editor: sidebar meta box with all key overrides
-* Block Editor (Gutenberg): dedicated sidebar panel via registerPlugin
-* Quick Edit: TOC column in post list with inline disable/state/position/numbers controls
-* Per-post overrides: disable TOC, initial state, position, title, numbers, sticky header, reading time
+
+* Classic Editor meta box with key overrides.
+* Block Editor sidebar panel via registerPlugin.
+* Quick Edit support from the posts list.
+* Per-post controls for disabling the TOC, title, initial state, placement, numbers, sticky header, and reading time.
 
 = Developer-Friendly =
-* Zero external dependencies — no jQuery on the frontend, no CDN fonts
-* CSS custom properties for easy theme integration
-* Custom CSS field for full override control
-* `[wptw_toc]` shortcode for manual placement
-* Clean, namespaced code (wptw_ prefix throughout)
-* Uninstall hook clears all plugin data
+
+* No jQuery required on the frontend.
+* CSS custom properties for easier theme integration.
+* Theme hardening for TOC links, lists, buttons, labels, numbers, and layout surfaces.
+* `[wptw_toc]` shortcode for manual placement.
+* Clean, namespaced code using the `wptw_` prefix.
+* Uninstall hook clears plugin data.
 
 == Installation ==
 
-1. Upload the `tablewise` folder to `/wp-content/plugins/`
-2. Activate the plugin through the **Plugins** menu in WordPress
-3. Go to **Settings → TableWise** to configure
-4. Optionally override settings per post via the post editor sidebar or Quick Edit
+1. Upload the `tablewise` folder to `/wp-content/plugins/`.
+2. Activate the plugin through the **Plugins** menu in WordPress.
+3. Go to **Settings > TableWise** to configure global behavior.
+4. Optionally override settings per post through the editor sidebar/meta box or Quick Edit.
 
 == Shortcode ==
 
-Use `[wptw_toc]` anywhere in your content when Position is set to "Manual — shortcode only". All settings come from the Settings panel. Per-post meta box overrides apply as normal.
+Use `[wptw_toc]` anywhere in your content when Position is set to "Manual - shortcode only". All layout, color, typography, display, and per-post settings still apply.
 
 == Frequently Asked Questions ==
 
 = Will the TOC always appear? =
-No. The TOC only appears if the post type is enabled in Settings, the post meets the minimum heading count, the post ID is not in the exclude list, and TOC is not disabled for that specific post.
+
+No. The TOC only appears if the post type is enabled, the post meets the minimum heading count, the post ID is not excluded, and TOC is not disabled for that specific post.
+
+= Can I switch between different TOC designs? =
+
+Yes. Go to **Settings > TableWise > Layouts** and choose Manuscript, Soft Editorial, Brutalist, or Minimalist. The Active badge shows the saved frontend layout.
+
+= Can I preview changes before saving? =
+
+Yes. The dashboard includes a live preview for layout, color, typography, display, progress, and visibility settings.
+
+= What does the Default color preset do? =
+
+Default restores the active layout's native color scheme. It is different from Light, which is a shared light preset.
+
+= Can every layout use the color presets? =
+
+Yes. Presets apply through the same color controls, with layout-aware handling where a layout needs its own dark or native color direction.
+
+= Can I customize the typography? =
+
+Yes. TableWise includes controls for font family, link text, child text, label text, reading time, numbers, label letter spacing, label transform, and border radius.
 
 = How do I make the TOC hidden by default? =
-Go to **Settings → TableWise → Display** and set "Default TOC state" to "Closed". You can also override this per post from the editor or Quick Edit.
+
+Go to **Settings > TableWise > Display** and set "Default TOC state" to "Closed". You can also override this per post.
 
 = How does the sticky header work? =
-When enabled, the TOC header (containing the title, reading time, and toggle button) uses CSS `position: sticky` to remain visible as the user scrolls through the list. The list itself scrolls normally. Set the "Sticky top offset" to the height of your site's fixed header so they don't overlap.
+
+When enabled, the TOC header sticks while the reader scrolls. Use "Sticky top offset" to clear fixed site headers or admin bars.
 
 = Can I change the TOC title per post? =
-Yes. Open any post in the editor and use the TableWise sidebar panel (Gutenberg) or meta box (Classic Editor) to set a custom title for that post.
+
+Yes. Use the TableWise sidebar panel in the Block Editor, the Classic Editor meta box, or Quick Edit controls.
+
+= Does TableWise require jQuery? =
+
+No. The frontend behavior is written without jQuery.
 
 = What CSS selector do I use for custom styles? =
-Use `.wptw-toc` as your root selector in the Custom CSS field. All internal elements are prefixed `.wptw-toc__*`.
+
+Use `.wptw-toc` as your root selector in the Custom CSS field. Internal elements use the `.wptw-toc__*` naming pattern.
 
 == Changelog ==
 
@@ -119,6 +176,7 @@ Use `.wptw-toc` as your root selector in the Custom CSS field. All internal elem
 * Strengthened light-preset borders and layout frame contrast
 * Added sticky settings-page header, admin footer, and cross-links between Layouts and Colours
 * Removed WordPress footer attribution from the TableWise settings screen
+* Expanded README and WordPress readme documentation to cover the full layout, preview, color, typography, reader, and per-post feature set
 
 = 1.2.0 =
 * Improved sticky header logic for better viewport tracking
@@ -139,7 +197,7 @@ Use `.wptw-toc` as your root selector in the Custom CSS field. All internal elem
 * Added configurable words-per-minute for reading time
 * Added back-to-top floating button with smooth scroll back to TOC
 * Added uninstall cleanup hook
-* Improved anchor handling — preserves existing heading IDs
+* Improved anchor handling - preserves existing heading IDs
 * IntersectionObserver used for both active highlighting and sticky detection
 * All CSS refactored to custom properties for easy theming
 * Renamed shortcode to `[wptw_toc]`

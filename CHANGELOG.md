@@ -76,6 +76,7 @@
 - Added sticky settings-page header and custom admin footer.
 - Removed WordPress footer attribution from the TableWise settings screen.
 - Added shortcut buttons between Layouts and Colours tabs.
+- Expanded README and WordPress readme documentation to cover the full layout, preview, color, typography, reader, and per-post feature set.
 
 ## 1.2.0
 
